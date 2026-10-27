@@ -88,7 +88,9 @@ export function tmaRoute(handler: Handler) {
           { status: 403 },
         )
       }
-      return await handler({ tgId, isTester: access.closedMode, req })
+      // Все, кто вошёл во время тестирования, помечаются тестировщиками — их данные удалятся перед бета-тестом (ТЗ 14).
+      const { testerPhase } = await getSettings(getDb())
+      return await handler({ tgId, isTester: testerPhase, req })
     } catch (e) {
       log.error({ err: e, user: hashTgId(tgId) }, 'tma api error')
       return NextResponse.json({ error: 'internal' }, { status: 500 })
