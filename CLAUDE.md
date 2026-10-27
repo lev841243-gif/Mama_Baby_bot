@@ -20,7 +20,7 @@ Telegram-бот + мини-приложение для мам детей 3–18 
 - `apps/worker` — бот **grammY** (плагины conversations, menu, transformer-throttler, auto-retry) + **BullMQ** на Redis (очереди: лента, напоминания, посты канала, ai).
 - `packages/shared` — схема БД `app` на **Drizzle** (+ drizzle-kit миграции), общие типы, Zod-схемы, «красные слова», тексты по умолчанию, утилиты (возраст, хеш ID).
 - PostgreSQL 16, Redis 7, Caddy (HTTPS), всё в **Docker Compose**, настройки только через env.
-- Хранилище файлов — S3-совместимое (например Cloudflare R2).
+- Хранилище файлов — S3-совместимое в РФ (например S3 Beget).
 - Мониторинг: GlitchTip (через `@sentry/nextjs`), Uptime Kuma, pino. Деплой — GitHub Actions. Бэкап — ежедневный `pg_dump` в S3, хранение 30 дней.
 
 ## Структура
@@ -72,7 +72,7 @@ docker-compose.yml
 
 ## Хостинг
 
-Сначала сервер за рубежом РФ (решение Льва, не обсуждается). Поэтому проект **переносим**: Docker Compose, всё через env, S3-совместимое хранилище, свой домен, Caddy. Перенос — `pg_dump` + `rclone`. Требование ТЗ 3.7 / приёмка 6 (данные в РФ) закрывается переездом до бета-теста с мамами — держать в уме, не спорить.
+VPS на **Beget в РФ** (решение Льва 28.10.2026) — закрывает ТЗ 3.7 и приёмку 6 (данные в РФ). Инструкция — [docs/deploy.md](docs/deploy.md). Проект остаётся **переносимым**: Docker Compose, всё через env, S3-совместимое хранилище в РФ (например S3 Beget), свой домен, Caddy. Перенос — `pg_dump` + `rclone`.
 
 ## Открытые решения → заглушки
 
@@ -107,6 +107,7 @@ corepack pnpm -F @mama/web generate:importmap             # после новы�
 corepack pnpm db:generate                                 # после правки packages/shared/src/db/schema.ts
 ```
 
+- Сервер (Beget VPS, `/opt/mama`): обновление — `bash infra/deploy/update.sh`, откат — `bash infra/deploy/rollback.sh`, подробно — [docs/deploy.md](docs/deploy.md).
 - Сервис `migrate` в compose прогоняет `payload migrate`, затем drizzle-миграции и добавляет `ACCESS_LIST_TG_IDS` в `app.access_list`.
 - `next build` на Windows падает на шаге standalone (нет прав на симлинки) — это нормально, собирать в Docker.
 - Мини-приложение: `/app`, API: `/api/tma/*` (заголовок `Authorization: tma <initData>`), юр. страницы: `/terms`, `/privacy`, `/consent`, `/rassylka`, `/oferta`, админка: `/admin`.
