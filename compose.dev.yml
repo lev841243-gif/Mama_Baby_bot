@@ -1,0 +1,9 @@
+# Для локальной разработки (pnpm dev): открывает postgres и redis на localhost.
+# docker compose -f docker-compose.yml -f compose.dev.yml up -d postgres redis
+services:
+  postgres:
+    ports: ['127.0.0.1:55432:5432']
+  redis:
+    ports: ['127.0.0.1:56379:6379']
+  web:
+    ports: ['127.0.0.1:53000:3000']

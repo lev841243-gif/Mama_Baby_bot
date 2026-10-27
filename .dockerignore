@@ -1,0 +1,11 @@
+**/node_modules
+**/.next
+**/dist
+.git
+.env
+.env.*
+!.env.example
+tz-v1-*
+tz-v2-*
+tz-v3-*
+otvet-zakazchice-*

@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+
+/* Системные шрифты, цвета темы Telegram с запасными значениями для обычного браузера. */
+:root {
+  --app-bg: var(--tg-theme-bg-color, #ffffff);
+  --app-text: var(--tg-theme-text-color, #1c1c1e);
+  --app-hint: var(--tg-theme-hint-color, #8e8e93);
+  --app-link: var(--tg-theme-link-color, #2481cc);
+  --app-secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f7);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tg]) {
+    --app-bg: #1c1c1e;
+    --app-text: #f2f2f7;
+    --app-hint: #98989f;
+    --app-link: #64aaff;
+    --app-secondary-bg: #2c2c2e;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Юридические тексты на сайте проекта. */
+.doc {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 24px 16px calc(32px + env(safe-area-inset-bottom));
+  line-height: 1.55;
+  font-size: 16px;
+}
+.doc h1, .doc h2, .doc h3, .doc h4 { line-height: 1.25; margin: 1.4em 0 0.5em; }
+.doc h1 { font-size: 1.5rem; margin-top: 0; }
+.doc h2 { font-size: 1.25rem; }
+.doc h3, .doc h4 { font-size: 1.05rem; }
+.doc p, .doc ul, .doc ol { margin: 0.6em 0; }
+.doc ul, .doc ol { padding-left: 1.3em; }
+.doc ul { list-style: disc; }
+.doc ol { list-style: decimal; }
+.doc a { color: var(--app-link); }
+.doc blockquote { margin: 1em 0; padding: 8px 12px; background: var(--app-secondary-bg); border-radius: 8px; }
+.doc table { border-collapse: collapse; display: block; overflow-x: auto; font-size: 14px; }
+.doc th, .doc td { border: 1px solid var(--app-hint); padding: 4px 8px; vertical-align: top; }
