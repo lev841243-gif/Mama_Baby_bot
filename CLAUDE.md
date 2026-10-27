@@ -98,6 +98,8 @@ docker compose -f docker-compose.yml -f compose.dev.yml up -d postgres redis   #
 corepack pnpm dev:web
 corepack pnpm dev:worker
 corepack pnpm typecheck
+# тесты (DB-тесты пропускаются без TEST_DATABASE_URL; пишут только отрицательные tg_id)
+TEST_DATABASE_URL=postgres://mama:<пароль>@localhost:55432/mama corepack pnpm test
 
 # миграции
 corepack pnpm -F @mama/web payload migrate:create <name>   # после правки коллекций Payload

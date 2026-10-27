@@ -11,13 +11,15 @@ import {
   useSignal,
   viewport,
 } from '@telegram-apps/sdk-react'
-import { AppRoot, Placeholder, Spinner } from '@telegram-apps/telegram-ui'
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { AppRoot, Button, Cell, List, Placeholder, Section, Spinner } from '@telegram-apps/telegram-ui'
+import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useState } from 'react'
 import type { SessionPayload } from '@/lib/session-types'
 import { ApiError, api } from './api'
 import { BetaBanner } from './BetaBanner'
+import { Confirm } from './Confirm'
 import { ConsentWindow } from './ConsentWindow'
+import { useBackButton } from './telegram'
 
 type TgEnv = { ok: true; initData: string; platform: 'ios' | 'base' } | { ok: false }
 
@@ -95,12 +97,51 @@ function ThemedRoot({ platform, children }: { platform: 'ios' | 'base'; children
   )
 }
 
+type Screen = 'home' | 'settings' | 'consents'
+
+/** Экран из ссылки бота: /app?screen=consents — «Мои согласия» из настроек бота. */
+function initialScreen(): Screen {
+  const s = new URLSearchParams(window.location.search).get('screen')
+  return s === 'consents' || s === 'settings' ? s : 'home'
+}
+
 function Screens({ initData }: { initData: string }) {
+  const [screen, setScreen] = useState<Screen>(initialScreen)
+  const [deleted, setDeleted] = useState(false)
+  const queryClient = useQueryClient()
   const session = useQuery({
     queryKey: ['session'],
     queryFn: () => api<SessionPayload>('/api/tma/session', initData),
     staleTime: Infinity,
+    enabled: !deleted,
   })
+
+  const back = useCallback(() => setScreen((s) => (s === 'consents' ? 'settings' : 'home')), [])
+  const hasTgBack = useBackButton(screen !== 'home' && !deleted ? back : null)
+
+  if (deleted && session.data) {
+    const t = session.data.texts
+    return (
+      <Placeholder
+        className="min-h-dvh"
+        header={t.appDeletedTitle}
+        description={t.appDeleted}
+        action={
+          <Button
+            mode="bezeled"
+            onClick={() => {
+              // Вход с нуля, как у нового человека (ТЗ 6.5).
+              setDeleted(false)
+              setScreen('home')
+              void queryClient.invalidateQueries({ queryKey: ['session'] })
+            }}
+          >
+            {t.backButton}
+          </Button>
+        }
+      />
+    )
+  }
 
   if (session.isPending) {
     return (
@@ -121,23 +162,87 @@ function Screens({ initData }: { initData: string }) {
   }
 
   const data = session.data
+  const onDeleted = () => setDeleted(true)
+  // Без основного согласия — только окно согласий, куда бы ни вела ссылка (ТЗ 8, приёмка 1).
+  const current: Screen | 'consent' = data.status === 'needConsent' ? 'consent' : screen
+
   return (
     <div className="pb-[env(safe-area-inset-bottom)]">
       {data.beta && <BetaBanner text={data.texts.betaBanner} />}
-      {data.status === 'needConsent' ? (
-        <ConsentWindow session={data} initData={initData} />
-      ) : (
-        <Home session={data} />
+      {current !== 'home' && current !== 'consent' && !hasTgBack && (
+        <button type="button" className="px-4 pt-3 text-[15px]" style={{ color: 'var(--tg-theme-link-color, #2481cc)' }} onClick={back}>
+          {data.texts.backButton}
+        </button>
+      )}
+      {current === 'consent' && <ConsentWindow key="first" mode="first" session={data} initData={initData} />}
+      {current === 'home' && <Home session={data} onSettings={() => setScreen('settings')} />}
+      {current === 'settings' && (
+        <Settings session={data} initData={initData} onConsents={() => setScreen('consents')} onDeleted={onDeleted} />
+      )}
+      {current === 'consents' && (
+        <ConsentWindow key="manage" mode="manage" session={data} initData={initData} onDeleted={onDeleted} />
       )}
     </div>
   )
 }
 
 /** Заглушка главной: экраны материалов — шаг 5 плана. */
-function Home({ session }: { session: SessionPayload }) {
+function Home({ session, onSettings }: { session: SessionPayload; onSettings: () => void }) {
   return (
-    <Placeholder header="Дневник спокойного материнства" description="Скоро здесь появятся материалы по возрасту малыша.">
-      <p className="text-sm opacity-60">{session.texts.medicalDisclaimer}</p>
-    </Placeholder>
+    <>
+      <Placeholder
+        header="Дневник спокойного материнства"
+        description="Скоро здесь появятся материалы по возрасту малыша."
+        action={
+          <Button mode="bezeled" onClick={onSettings}>
+            {session.texts.settingsButton}
+          </Button>
+        }
+      />
+      <p className="px-4 text-center text-sm opacity-60">{session.texts.medicalDisclaimer}</p>
+    </>
+  )
+}
+
+/** Настройки (ТЗ 8.1, п. 12). Возраст, лента и закладки — следующие шаги. */
+function Settings({
+  session,
+  initData,
+  onConsents,
+  onDeleted,
+}: {
+  session: SessionPayload
+  initData: string
+  onConsents: () => void
+  onDeleted: () => void
+}) {
+  const t = session.texts
+  const [confirming, setConfirming] = useState(false)
+  const revokeAll = useMutation({
+    mutationFn: () => api<{ status: 'deleted' }>('/api/tma/revoke', initData),
+    onSuccess: onDeleted,
+  })
+
+  return (
+    <List>
+      <h1 className="px-4 pt-2 text-xl font-semibold">{t.appSettingsTitle}</h1>
+      <Section>
+        <Cell onClick={onConsents}>{t.myConsentsButton}</Cell>
+        <Cell onClick={() => setConfirming(true)} style={{ color: 'var(--tg-theme-destructive-text-color, #e53935)' }}>
+          {t.appRevokeAll}
+        </Cell>
+      </Section>
+      {confirming && (
+        <Confirm
+          text={t.revokeConfirm}
+          okText={t.revokeYes}
+          cancelText={t.revokeNo}
+          loading={revokeAll.isPending}
+          onOk={() => revokeAll.mutate()}
+          onCancel={() => setConfirming(false)}
+        />
+      )}
+      {revokeAll.isError && <p className="px-4 text-sm text-red-600">Не получилось удалить. Попробуйте ещё раз.</p>}
+    </List>
   )
 }

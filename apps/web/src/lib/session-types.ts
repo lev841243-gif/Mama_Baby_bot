@@ -1,4 +1,5 @@
 import type { ConsentType } from '@mama/shared/consent-types'
+import type { ClientTextKey } from '@mama/shared/texts'
 
 export type SessionPayload = {
   status: 'ready' | 'needConsent'
@@ -7,20 +8,7 @@ export type SessionPayload = {
     items: { type: ConsentType; required: boolean; title: string; hint: string; docPath: string }[]
     granted: ConsentType[]
   }
-  texts: Record<
-    | 'betaBanner'
-    | 'betaConsent'
-    | 'consentTitle'
-    | 'consentIntro'
-    | 'consentAcceptAll'
-    | 'consentContinue'
-    | 'consentNotNow'
-    | 'consentNotNowText'
-    | 'consentDocLink'
-    | 'privacyLink'
-    | 'medicalDisclaimer',
-    string
-  >
+  texts: Record<ClientTextKey, string>
 }
 
 export type ClosedPayload = { status: 'closed'; text: string }

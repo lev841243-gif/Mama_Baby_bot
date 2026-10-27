@@ -1,44 +1,66 @@
 'use client'
 import type { ConsentType } from '@mama/shared/consent-types'
-import { hapticFeedback, openLink } from '@telegram-apps/sdk-react'
+import { openLink } from '@telegram-apps/sdk-react'
 import { Button, Cell, Checkbox, List, Section } from '@telegram-apps/telegram-ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { SessionPayload } from '@/lib/session-types'
 import { api } from './api'
+import { Confirm } from './Confirm'
+import { haptic } from './telegram'
 
 const linkStyle = { color: 'var(--tg-theme-link-color, #2481cc)' }
 
-/** Вибрация — приятное дополнение; вне Telegram SDK бросает ошибку, её глотаем. */
-function haptic(fn: () => void) {
-  try {
-    fn()
-  } catch {
-    /* нет Telegram — без вибрации */
-  }
+type Props = {
+  session: SessionPayload
+  initData: string
+  /** first — окно при входе; manage — «Мои согласия» в настройках (ТЗ 8.9). */
+  mode: 'first' | 'manage'
+  onDeleted?: () => void
 }
 
 /**
- * Окно согласий (ТЗ 8.9). Галочки сняты по умолчанию; «Принять всё» — только показанные пункты;
- * «Продолжить с выбранными» — только с основным согласием; «Не сейчас» ничего не отправляет.
+ * Окно согласий (ТЗ 8.9). При входе: галочки сняты, «Принять всё» — только показанные пункты,
+ * «Продолжить с выбранными» — только с основным согласием, «Не сейчас» ничего не отправляет.
+ * В «Мои согласия»: галочки показывают текущие согласия, снять галочку — отозвать это согласие.
  */
-export function ConsentWindow({ session, initData }: { session: SessionPayload; initData: string }) {
+export function ConsentWindow({ session, initData, mode, onDeleted }: Props) {
   const { items } = session.consent
   const t = session.texts
-  const [checked, setChecked] = useState<Set<ConsentType>>(() => new Set())
+  const manage = mode === 'manage'
+  const [checked, setChecked] = useState<Set<ConsentType>>(() => new Set(manage ? session.consent.granted : []))
   const [declined, setDeclined] = useState(false)
+  const [revoking, setRevoking] = useState<ConsentType | null>(null)
   const queryClient = useQueryClient()
 
-  const submit = useMutation({
+  const grant = useMutation({
     mutationFn: (types: ConsentType[]) => api<SessionPayload>('/api/tma/consents', initData, { types }),
     onSuccess: (next) => {
-      haptic(() => hapticFeedback.notificationOccurred.ifAvailable('success'))
+      haptic((h) => h.notificationOccurred.ifAvailable('success'))
+      setChecked(new Set(next.consent.granted))
+      queryClient.setQueryData(['session'], next)
+    },
+  })
+
+  const revoke = useMutation({
+    mutationFn: (type: ConsentType) =>
+      api<SessionPayload | { status: 'deleted' }>('/api/tma/consents/revoke', initData, { type }),
+    onSuccess: (next) => {
+      setRevoking(null)
+      if (next.status === 'deleted') return onDeleted?.()
+      setChecked(new Set(next.consent.granted))
       queryClient.setQueryData(['session'], next)
     },
   })
 
   const toggle = (type: ConsentType) => {
-    haptic(() => hapticFeedback.selectionChanged.ifAvailable())
+    haptic((h) => h.selectionChanged.ifAvailable())
+    if (manage) {
+      // Снять галочку — отозвать (с подтверждением), поставить — дать согласие сразу.
+      if (checked.has(type)) setRevoking(type)
+      else grant.mutate([...checked, type])
+      return
+    }
     setDeclined(false)
     setChecked((prev) => {
       const next = new Set(prev)
@@ -57,11 +79,14 @@ export function ConsentWindow({ session, initData }: { session: SessionPayload; 
     }
   }
 
+  const busy = grant.isPending || revoke.isPending
+  const revokingItem = items.find((i) => i.type === revoking)
+
   return (
     <List>
       {session.beta && <p className="px-4 pt-3 text-[13px] opacity-70">{t.betaConsent}</p>}
       <div className="px-4 pt-2">
-        <h1 className="text-xl font-semibold">{t.consentTitle}</h1>
+        <h1 className="text-xl font-semibold">{manage ? t.myConsentsButton : t.consentTitle}</h1>
         <p className="mt-2 text-[15px] leading-snug opacity-80">{t.consentIntro}</p>
       </div>
       <Section>
@@ -70,7 +95,7 @@ export function ConsentWindow({ session, initData }: { session: SessionPayload; 
             key={item.type}
             Component="label"
             multiline
-            before={<Checkbox checked={checked.has(item.type)} onChange={() => toggle(item.type)} />}
+            before={<Checkbox checked={checked.has(item.type)} disabled={busy} onChange={() => toggle(item.type)} />}
             description={
               <>
                 {item.hint}{' '}
@@ -99,29 +124,45 @@ export function ConsentWindow({ session, initData }: { session: SessionPayload; 
         </button>
       </div>
 
-      <div className="flex flex-col gap-2 px-4 pt-2 pb-4">
-        <Button size="l" stretched loading={submit.isPending} onClick={() => submit.mutate(items.map((i) => i.type))}>
-          {t.consentAcceptAll}
-        </Button>
-        <Button
-          size="l"
-          stretched
-          mode="bezeled"
-          disabled={!checked.has('pd') || submit.isPending}
-          onClick={() => submit.mutate([...checked])}
-        >
-          {t.consentContinue}
-        </Button>
-        <Button size="l" stretched mode="plain" onClick={() => setDeclined(true)}>
-          {t.consentNotNow}
-        </Button>
-        {declined && (
-          <p role="status" className="px-2 text-center text-[15px] leading-snug opacity-80">
-            {t.consentNotNowText}
-          </p>
-        )}
-        {submit.isError && <p className="text-sm text-red-600">Не получилось сохранить. Попробуйте ещё раз.</p>}
-      </div>
+      {revokingItem && (
+        <Confirm
+          text={t.consentRevokeItem.replace('{title}', revokingItem.title)}
+          note={revokingItem.type === 'pd' ? t.consentRevokeItemPd : undefined}
+          okText={t.consentRevokeOk}
+          cancelText={t.revokeNo}
+          loading={revoke.isPending}
+          onOk={() => revoke.mutate(revokingItem.type)}
+          onCancel={() => setRevoking(null)}
+        />
+      )}
+
+      {!manage && (
+        <div className="flex flex-col gap-2 px-4 pt-2 pb-4">
+          <Button size="l" stretched loading={grant.isPending} onClick={() => grant.mutate(items.map((i) => i.type))}>
+            {t.consentAcceptAll}
+          </Button>
+          <Button
+            size="l"
+            stretched
+            mode="bezeled"
+            disabled={!checked.has('pd') || busy}
+            onClick={() => grant.mutate([...checked])}
+          >
+            {t.consentContinue}
+          </Button>
+          <Button size="l" stretched mode="plain" onClick={() => setDeclined(true)}>
+            {t.consentNotNow}
+          </Button>
+          {declined && (
+            <p role="status" className="px-2 text-center text-[15px] leading-snug opacity-80">
+              {t.consentNotNowText}
+            </p>
+          )}
+        </div>
+      )}
+      {(grant.isError || revoke.isError) && (
+        <p className="px-4 pb-4 text-sm text-red-600">Не получилось сохранить. Попробуйте ещё раз.</p>
+      )}
     </List>
   )
 }

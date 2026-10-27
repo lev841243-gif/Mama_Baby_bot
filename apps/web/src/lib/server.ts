@@ -1,5 +1,6 @@
 import 'server-only'
 import {
+  CLIENT_TEXT_KEYS,
   DEFAULT_TEXTS,
   QUEUE_BOT,
   checkAccess,
@@ -30,20 +31,7 @@ const channelUrl = () => process.env.CHANNEL_URL ?? 'https://t.me/detimam_pro'
 
 /** Тексты для мини-приложения. TODO(шаг 3): из Payload global, правит автор (ТЗ 6.8). */
 function clientTexts() {
-  const t = DEFAULT_TEXTS
-  return {
-    betaBanner: t.betaBanner,
-    betaConsent: t.betaConsent,
-    consentTitle: t.consentTitle,
-    consentIntro: t.consentIntro,
-    consentAcceptAll: t.consentAcceptAll,
-    consentContinue: t.consentContinue,
-    consentNotNow: t.consentNotNow,
-    consentNotNowText: t.consentNotNowText,
-    consentDocLink: t.consentDocLink,
-    privacyLink: t.privacyLink,
-    medicalDisclaimer: t.medicalDisclaimer,
-  }
+  return Object.fromEntries(CLIENT_TEXT_KEYS.map((k) => [k, DEFAULT_TEXTS[k]])) as SessionPayload['texts']
 }
 
 export async function buildSession(state: ConsentState): Promise<SessionPayload> {
@@ -67,11 +55,19 @@ export async function buildSession(state: ConsentState): Promise<SessionPayload>
 
 type Handler = (ctx: { tgId: number; isTester: boolean; req: Request }) => Promise<Response>
 
+type RouteOptions = {
+  /**
+   * Требовать действующее основное согласие (по умолчанию да). Без него приложение не отдаёт
+   * ничего, кроме окна согласий (ТЗ 8, приёмка 1). Выключается только для входа, согласий и отзыва.
+   */
+  requireConsent?: boolean
+}
+
 /**
- * Общая обёртка API мини-приложения: подпись initData → закрытый режим.
+ * Общая обёртка API мини-приложения: подпись initData → закрытый режим → основное согласие.
  * Тем, кого нет в списке доступа, отвечаем 403 и ничего о них не пишем (ТЗ 14).
  */
-export function tmaRoute(handler: Handler) {
+export function tmaRoute(handler: Handler, { requireConsent = true }: RouteOptions = {}) {
   return async (req: Request): Promise<Response> => {
     let tgId: number
     try {
@@ -90,6 +86,9 @@ export function tmaRoute(handler: Handler) {
       }
       // Все, кто вошёл во время тестирования, помечаются тестировщиками — их данные удалятся перед бета-тестом (ТЗ 14).
       const { testerPhase } = await getSettings(getDb())
+      if (requireConsent && !(await getConsentState(getDb(), tgId)).pdValid) {
+        return NextResponse.json({ status: 'needConsent' }, { status: 403 })
+      }
       return await handler({ tgId, isTester: testerPhase, req })
     } catch (e) {
       log.error({ err: e, user: hashTgId(tgId) }, 'tma api error')

@@ -24,4 +24,4 @@ export const POST = tmaRoute(async ({ tgId, isTester, req }) => {
       .catch((err: unknown) => log.error({ err, user: hashTgId(tgId) }, 'enqueue consent-granted failed'))
   }
   return NextResponse.json(await buildSession(state))
-})
+}, { requireConsent: false })

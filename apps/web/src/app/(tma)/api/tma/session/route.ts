@@ -7,4 +7,4 @@ export const dynamic = 'force-dynamic'
 export const POST = tmaRoute(async ({ tgId }) => {
   const state = await getConsentState(getDb(), tgId)
   return NextResponse.json(await buildSession(state))
-})
+}, { requireConsent: false })
