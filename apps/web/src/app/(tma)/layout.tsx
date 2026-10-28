@@ -35,7 +35,8 @@ const BOOT_GUARD = `(function(){
   setTimeout(function(){
     var el=document.documentElement, mounted=el.getAttribute('data-app-mounted');
     var stage=(mounted?'mounted':'not-mounted')+' ready='+(el.getAttribute('data-tg-ready')||'no')+' state='+document.readyState+' tg='+(window.TelegramWebviewProxy?'ios':window.TelegramWebview?'android':window.external&&'notify' in window.external?'desktop':'none');
-    // TODO: временно шлём отчёт при каждом открытии — ищем белый экран на iOS. Убрать после исправления.
+    // Всё запустилось без ошибок — отчёт не нужен.
+    if(mounted&&!errs.length) return;
     try{ fetch('/api/client-error',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({stage:stage,errors:errs,ua:navigator.userAgent})}); }catch(_){}
     if(mounted) return;
     var d=document.createElement('div');
