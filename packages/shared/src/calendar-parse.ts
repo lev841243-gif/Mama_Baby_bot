@@ -2,6 +2,9 @@
 // текст мамы не уходит во второй сервис. Не распознали — мама выбирает кнопками.
 // Результат — только структура: дата, навык из справочника, статус. Маме показывается шаблонный текст автора.
 import { normalizeText, stemTokens, stemsMatch } from './red-words'
+import { formatDay } from './calendar-types'
+
+export { formatDay }
 
 export type CalendarStatus = 'start' | 'formed'
 export type SkillRef = { id: number; name: string; synonyms: string[] }
@@ -128,8 +131,3 @@ export function isValidCalendarDay(day: string, today: string, birth?: { year: n
   return day >= addDays(today, -3 * 366)
 }
 
-/** 15.11.2026 — для подтверждения «Записала: 15.11 — …». */
-export function formatDay(day: string, withYear = false): string {
-  const [y, m, d] = day.split('-')
-  return withYear ? `${d}.${m}.${y}` : `${d}.${m}`
-}

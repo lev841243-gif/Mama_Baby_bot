@@ -12,7 +12,7 @@
     "./content": "./src/content.ts",
     "./age": "./src/age.ts",
     "./feed-types": "./src/feed-types.ts",
-    "./calendar-parse": "./src/calendar-parse.ts"
+    "./calendar-types": "./src/calendar-types.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",

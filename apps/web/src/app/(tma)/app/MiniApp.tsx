@@ -13,6 +13,7 @@ import {
 } from '@telegram-apps/sdk-react'
 import { AppRoot, Button, Placeholder, Spinner } from '@telegram-apps/telegram-ui'
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import { useMemo, useState } from 'react'
 import type { SessionPayload } from '@/lib/session-types'
 import { ApiError, api } from './api'
@@ -20,9 +21,7 @@ import { BetaBanner } from './BetaBanner'
 import { ConsentWindow } from './ConsentWindow'
 import { AppCtx, type Nav, type Screen, initialStack, useApp } from './nav'
 import { BookmarksScreen } from './screens/BookmarksScreen'
-import { CalendarScreen } from './screens/CalendarScreen'
 import { CalmScreen } from './screens/CalmScreen'
-import { FeedScreen } from './screens/FeedScreen'
 import { HomeScreen } from './screens/HomeScreen'
 import { MatchScreen } from './screens/MatchScreen'
 import { MaterialScreen } from './screens/MaterialScreen'
@@ -33,6 +32,10 @@ import { SettingsScreen } from './screens/SettingsScreen'
 import { SubscriptionScreen } from './screens/SubscriptionScreen'
 import { UsefulScreen } from './screens/UsefulScreen'
 import { startParam, useBackButton } from './telegram'
+
+// Экраны этапа 2 — отдельными чанками: на JS первого экрана не влияют (CLAUDE.md, 150–200 КБ).
+const CalendarScreen = dynamic(() => import('./screens/CalendarScreen').then((m) => m.CalendarScreen), { loading: () => <Spinner size="l" /> })
+const FeedScreen = dynamic(() => import('./screens/FeedScreen').then((m) => m.FeedScreen), { loading: () => <Spinner size="l" /> })
 
 type TgEnv = { ok: true; initData: string; platform: 'ios' | 'base' } | { ok: false }
 

@@ -1,5 +1,5 @@
 'use client'
-import { formatDay } from '@mama/shared/calendar-parse'
+import { formatDay } from '@mama/shared/calendar-types'
 import { MONTHS_RU } from '@mama/shared/texts'
 import { openLink } from '@telegram-apps/sdk-react'
 import { Button, Cell, List, Section } from '@telegram-apps/telegram-ui'

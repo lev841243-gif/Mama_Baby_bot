@@ -6,7 +6,7 @@ import { eq, inArray, sql } from 'drizzle-orm'
 import { deleteUserData, getConsentState, grantConsents, revokeConsent } from './consents'
 import { createDb, type Db } from './db/client'
 import { consents, feedSent, feedSettings, payments, skillCalendar, users } from './db/schema'
-import { getChildBirth, setChildBirth } from './profile'
+import { getChildBirth, setBotBlocked, setChildBirth } from './profile'
 import { runFeedTick, subscribeFeed, type FeedSender } from './feed'
 import {
   addCalendarEntry,
@@ -268,8 +268,14 @@ test('лента: по возрасту, без закрытого, без по�
       assert.deepEqual(got, ['Тест ленты 1'], 'после сбоя материал не пришёл второй раз')
       assert.ok((await tx.select().from(feedSent).where(eq(feedSent.userId, userId!))).some((x) => x.materialId === m5))
 
-      // 18 месяцев: прощание один раз, дальше тишина.
+      // Заблокировала бот — ничего не уходит (приёмка 28).
       await setChildBirth(tx, C, { year: 2025, month: 5 })
+      await setBotBlocked(tx, C, true)
+      await runFeedTick(tx, sender, new Date('2026-11-16T07:00:00Z'), [C])
+      assert.deepEqual(got, ['Тест ленты 1'])
+      await setBotBlocked(tx, C, false)
+
+      // 18 месяцев: прощание один раз, дальше тишина.
       await runFeedTick(tx, sender, new Date('2026-11-16T07:00:00Z'), [C])
       await runFeedTick(tx, sender, new Date('2026-11-19T07:00:00Z'), [C])
       assert.deepEqual(got, ['Тест ленты 1', 'farewell'])
