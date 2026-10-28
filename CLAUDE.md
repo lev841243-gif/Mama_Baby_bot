@@ -21,6 +21,7 @@ Telegram-бот + мини-приложение для мам детей 3–18 
 - `packages/shared` — схема БД `app` на **Drizzle** (+ drizzle-kit миграции), общие типы, Zod-схемы, «красные слова», тексты по умолчанию, утилиты (возраст, хеш ID).
 - PostgreSQL 16, Redis 7, Caddy (HTTPS), всё в **Docker Compose**, настройки только через env.
 - Хранилище файлов — S3-совместимое в РФ (например S3 Beget).
+- Поиск по смыслу (этап 3) — своя модель векторов в контейнере `embed` (text-embeddings-inference, `intfloat/multilingual-e5-small`, 384), pgvector в своём образе Postgres (`infra/postgres`), векторы — `app.material_vectors`, сверка раз в 2 минуты в очереди `embed` (`shared/embed.ts`).
 - Мониторинг: GlitchTip (через `@sentry/nextjs`), Uptime Kuma, pino. Деплой — GitHub Actions. Бэкап — ежедневный `pg_dump` в S3, хранение 30 дней.
 
 ## Структура

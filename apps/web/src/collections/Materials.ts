@@ -249,6 +249,16 @@ export const Materials: CollectionConfig = {
               filterOptions: { hidden: { not_equals: true } },
             },
             {
+              // Поиск по смыслу (ТЗ 10.1, этап 3): каждая фраза — отдельный вектор. Текст автора, не мам.
+              name: 'howMomsAsk',
+              label: 'Как мамы спрашивают (необязательно)',
+              type: 'textarea',
+              maxLength: 1500,
+              admin: {
+                description: 'По фразе на строку, до 10: как мама сказала бы своими словами — «не спит днём», «устала и срываюсь». Помогает поиску найти материал.',
+              },
+            },
+            {
               type: 'row',
               fields: [
                 {

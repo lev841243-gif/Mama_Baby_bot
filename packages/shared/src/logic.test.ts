@@ -229,3 +229,22 @@ test('календарь: разбор фразы правилами — дат�
   assert.equal(isValidCalendarDay('2026-04-30', today, { year: 2026, month: 5 }), false, 'не раньше рождения')
   assert.equal(isValidCalendarDay('2026-05-01', today, { year: 2026, month: 5 }), true)
 })
+
+test('векторы материала: название с анонсом, текст кусками, фразы мам по одной; хеш зависит от модели и текста', async () => {
+  const { materialParts, partsHash, fakeEmbedProvider, PART_ASK, PART_BODY } = await import('./embed')
+  const { EMBED_DIMS } = await import('./db/schema')
+  const long = Array.from({ length: 30 }, (_, i) => `Абзац ${i} ${'текст '.repeat(10)}`).join('\n')
+  const parts = materialParts({ id: 1, title: 'Сон днём', announce: 'Коротко', searchText: long, howMomsAsk: 'не спит днём\n\n устала и срываюсь ' })
+  assert.equal(parts[0]!.text, 'Сон днём\nКоротко')
+  const body = parts.filter((p) => p.part >= PART_BODY && p.part < PART_ASK)
+  assert.ok(body.length > 1 && body.every((p) => p.text.length <= 800))
+  assert.deepEqual(parts.filter((p) => p.part >= PART_ASK).map((p) => p.text), ['не спит днём', 'устала и срываюсь'])
+  assert.notEqual(partsHash('a', parts), partsHash('b', parts))
+  assert.equal(partsHash('a', parts), partsHash('a', materialParts({ id: 1, title: 'Сон днём', announce: 'Коротко', searchText: long, howMomsAsk: 'не спит днём\n\n устала и срываюсь ' })))
+
+  const [a, b, c] = await fakeEmbedProvider.embed(['малыш не спит днём', 'дневной сон малыша', 'прикорм овощами'], 'passage')
+  assert.equal(a!.length, EMBED_DIMS)
+  assert.ok(Math.abs(Math.hypot(...a!) - 1) < 1e-9, 'вектор нормирован')
+  const cos = (x: number[], y: number[]) => x.reduce((s, v, i) => s + v * y[i]!, 0)
+  assert.ok(cos(a!, b!) > cos(a!, c!), 'общие основы слов ближе')
+})

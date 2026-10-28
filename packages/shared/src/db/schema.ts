@@ -16,6 +16,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  vector,
 } from 'drizzle-orm/pg-core'
 
 export const app = pgSchema('app')
@@ -242,3 +243,28 @@ export const appSettings = app.table('app_settings', {
   value: jsonb('value').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+/** Размерность векторов модели поиска по смыслу (intfloat/multilingual-e5-small). Другая модель — новая миграция. */
+export const EMBED_DIMS = 384
+
+/**
+ * Векторы материалов для поиска по смыслу (ТЗ 10.1, этап 3). Это контент автора, не данные мам:
+ * ссылки на users нет, отзыв согласия и «Удалить данные тестировщиков» таблицу не трогают.
+ * Части: 0 — название и анонс, 1–9 — текст по кускам, 10–19 — фразы «Как мамы спрашивают».
+ * hash — от модели и текста всех частей: совпал — пересчёт не нужен.
+ */
+export const materialVectors = app.table(
+  'material_vectors',
+  {
+    materialId: integer('material_id').notNull(),
+    part: smallint('part').notNull(),
+    model: text('model').notNull(),
+    hash: text('hash').notNull(),
+    embedding: vector('embedding', { dimensions: EMBED_DIMS }).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.materialId, t.part] }),
+    index('material_vectors_embedding_idx').using('hnsw', t.embedding.op('vector_cosine_ops')),
+  ],
+)

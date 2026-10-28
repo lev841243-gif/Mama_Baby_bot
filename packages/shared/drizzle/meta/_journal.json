@@ -50,6 +50,13 @@
       "when": 1793180523587,
       "tag": "0006_step2_inactive",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793190684379,
+      "tag": "0007_etap3_material_vectors",
+      "breakpoints": true
     }
   ]
 }

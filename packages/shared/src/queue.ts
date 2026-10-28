@@ -4,6 +4,8 @@ import { Redis } from 'ioredis'
 export const QUEUE_BOT = 'bot'
 /** Лента (ТЗ 7): проход раз в 15 минут, по одной задаче за раз. */
 export const QUEUE_FEED = 'feed'
+/** Векторы материалов для поиска по смыслу (ТЗ 10.1): сверка раз в 2 минуты. Только тексты автора. */
+export const QUEUE_EMBED = 'embed'
 
 export type BotJob =
   /** Мама приняла основное согласие в приложении → в чате появляется меню (ТЗ 6.1, шаг 3). */

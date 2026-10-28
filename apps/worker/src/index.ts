@@ -7,11 +7,13 @@ import {
   WORKER_HEARTBEAT_KEY,
   alert,
   QUEUE_BOT,
+  QUEUE_EMBED,
   QUEUE_FEED,
   T,
   createLogger,
   createRedis,
   dueReminders,
+  embedProvider,
   fmt,
   getConfig,
   getFeedState,
@@ -21,6 +23,7 @@ import {
   runInactiveCleanup,
   setBotBlocked,
   speechProvider,
+  syncMaterialVectors,
   type BotJob,
   type FeedSender,
 } from '@mama/shared'
@@ -263,6 +266,23 @@ feedWorker.on('failed', (job, err) => {
   void alert('job:feed', `Лента: проход не выполнился — ${String(err).slice(0, 200)}`)
 })
 
+// Очередь embed: векторы материалов для поиска по смыслу (ТЗ 10.1, этап 3). Отдельно от ai — сборка статей
+// из канала идёт минутами и не должна задерживать правки автора (≤ 5 минут, ТЗ 9.4).
+const embed = embedProvider()
+const embedWorker = new Worker(
+  QUEUE_EMBED,
+  async () => {
+    const res = await syncMaterialVectors(db, embed)
+    if (res.indexed + res.removed > 0) log.info({ provider: embed.id, ...res }, 'material vectors synced')
+  },
+  { connection: createRedis(), concurrency: 1 },
+)
+embedWorker.on('failed', (job, err) => {
+  log.error({ err: String(err).slice(0, 200), job: job?.name }, 'embed job failed')
+  Sentry.captureException(err)
+  void alert('job:embed', `Поиск по смыслу: векторы материалов не обновились — ${String(err).slice(0, 200)}`)
+})
+
 // Отметка «жив» для /api/health и Uptime Kuma.
 const beat = () => cache.set(WORKER_HEARTBEAT_KEY, String(Date.now()), 'EX', 600).catch(() => undefined)
 void beat()
@@ -293,6 +313,8 @@ await scheduler.upsertJobScheduler('subscriptions-tick', { every: 60 * 60 * 1000
 await scheduler.upsertJobScheduler('inactive-tick', { every: 6 * 60 * 60 * 1000 }, { name: 'inactive-tick', data: {} })
 const feedScheduler = new Queue(QUEUE_FEED, { connection: createRedis() })
 await feedScheduler.upsertJobScheduler('feed-tick', { every: 15 * 60 * 1000 }, { name: 'feed-tick', data: {} })
+const embedScheduler = new Queue(QUEUE_EMBED, { connection: createRedis() })
+await embedScheduler.upsertJobScheduler('embed-sync', { every: 2 * 60 * 1000 }, { name: 'embed-sync', data: {} })
 
 async function configureBot() {
   await bot.api.setMyCommands([
@@ -308,7 +330,7 @@ async function configureBot() {
 
 async function shutdown(signal: string) {
   log.info({ signal }, 'shutting down')
-  await Promise.allSettled([bot.stop(), worker.close(), aiWorker.close(), feedWorker.close(), scheduler.close(), feedScheduler.close(), cache.quit()])
+  await Promise.allSettled([bot.stop(), worker.close(), aiWorker.close(), feedWorker.close(), embedWorker.close(), scheduler.close(), feedScheduler.close(), embedScheduler.close(), cache.quit()])
   await db.$client.end({ timeout: 5 })
   process.exit(0)
 }

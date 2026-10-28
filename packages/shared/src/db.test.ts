@@ -20,6 +20,7 @@ import {
 } from './calendar'
 import { resetSettingsCache, setAppSettings } from './settings'
 import { runInactiveCleanup } from './inactive'
+import { fakeEmbedProvider, syncMaterialVectors } from './embed'
 
 const url = process.env.TEST_DATABASE_URL
 // Календарь по умолчанию выключен: его тесты включают флаг сами.
@@ -375,4 +376,53 @@ test('Р9: неактивных сначала предупреждаем, че�
       if (!(err instanceof Rollback)) throw err
     })
   resetSettingsCache()
+})
+
+test('векторы материалов: только опубликованные, правка пересчитывает, архив удаляет; отзыв мамы не трогает (этап 3)', { skip: !url }, async () => {
+  const H = -1008
+  class Rollback extends Error {}
+  await db
+    .transaction(async (txRaw) => {
+      const tx = txRaw as unknown as Db
+      const mat = async (title: string, status: string) => {
+        const [r] = await tx.execute<{ id: number }>(sql`
+          insert into payload.materials (title, type, "order", access, _status, announce, search_text, how_moms_ask)
+          values (${title}, 'article', 1, 'free', ${status}, 'Анонс', ${title + ' текст'}, 'не спит днём')
+          returning id`)
+        return Number(r!.id)
+      }
+      const pub = await mat('Тест векторов', 'published')
+      const draft = await mat('Тест векторов черновик', 'draft')
+      const partsOf = async (id: number) =>
+        (await tx.execute<{ part: number; hash: string }>(sql`select part, hash from app.material_vectors where material_id = ${id} order by part`)).map((r) => ({
+          part: Number(r.part),
+          hash: r.hash,
+        }))
+
+      await syncMaterialVectors(tx, fakeEmbedProvider)
+      const first = await partsOf(pub)
+      assert.deepEqual(first.map((p) => p.part), [0, 1, 10], 'название+анонс, текст, фраза мамы')
+      assert.equal((await partsOf(draft)).length, 0, 'черновик не индексируется')
+
+      const again = await syncMaterialVectors(tx, fakeEmbedProvider)
+      assert.equal(again.indexed, 0, 'без правок — без пересчёта')
+
+      await tx.execute(sql`update payload.materials set announce = 'Новый анонс' where id = ${pub}`)
+      await syncMaterialVectors(tx, fakeEmbedProvider)
+      assert.notEqual((await partsOf(pub))[0]!.hash, first[0]!.hash, 'правка пересчитала')
+
+      // Мама и её удаление к векторам отношения не имеют (контент автора).
+      await grantConsents(tx, H, ['pd'], { isTester: true })
+      await deleteUserData(tx, H)
+      assert.equal((await partsOf(pub)).length, 3)
+
+      await tx.execute(sql`update payload.materials set archived = true where id = ${pub}`)
+      const r = await syncMaterialVectors(tx, fakeEmbedProvider)
+      assert.ok(r.removed >= 1)
+      assert.equal((await partsOf(pub)).length, 0, 'архив удаляет векторы')
+      throw new Rollback()
+    })
+    .catch((err: unknown) => {
+      if (!(err instanceof Rollback)) throw err
+    })
 })

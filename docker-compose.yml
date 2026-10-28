@@ -4,6 +4,8 @@ name: mama
 x-app-env: &app-env
   DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
   REDIS_URL: redis://redis:6379
+  # Сервис векторов (embed). Пусто — фейковый провайдер, поиск по смыслу не работает.
+  EMBED_URL: http://embed:80
 
 # Логи контейнеров: не больше 100 МБ на сервис; по времени — logrotate, 30 дней (infra/logrotate, ТЗ 11.5).
 x-logging: &logging
@@ -12,7 +14,9 @@ x-logging: &logging
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # postgres:16-alpine + pgvector (infra/postgres/Dockerfile). Перед первой сменой образа на сервере — бэкап.
+    build: ./infra/postgres
+    image: mama-postgres:16-pgvector
     restart: unless-stopped
     logging: *logging
     # GlitchTip (профиль monitoring) держит секционированные таблицы — ему нужно больше блокировок.
@@ -42,6 +46,28 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Своя модель векторов для поиска по смыслу (ТЗ 10.1, решение Льва Л7): запросы мам не уходят с сервера.
+  # Порт наружу не открыт. При первом запуске скачивает модель (~0,5 ГБ) с Hugging Face в том embedmodels.
+  # Другая модель — EMBED_MODEL; если у неё другая размерность, нужна миграция (EMBED_DIMS в shared).
+  embed:
+    logging: *logging
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
+    restart: unless-stopped
+    # Ограничения под VPS 2 vCPU / 6 ГБ: без них сервис занимает гигабайты на прогрев больших пакетов.
+    command:
+      - --model-id=${EMBED_MODEL:-intfloat/multilingual-e5-small}
+      - --port=80
+      - --tokenization-workers=1
+      - --max-batch-tokens=4096
+      - --max-concurrent-requests=16
+      - --max-client-batch-size=16
+      - --auto-truncate
+    environment:
+      OMP_NUM_THREADS: '2'
+    mem_limit: 1500m
+    volumes:
+      - embedmodels:/data
 
   migrate:
     logging: *logging
@@ -133,6 +159,7 @@ services:
     ports: ['127.0.0.1:3001:3001']
 
 volumes:
+  embedmodels:
   kuma:
   media:
   pgdata:

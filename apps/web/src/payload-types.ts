@@ -208,6 +208,10 @@ export interface Material {
   skillsLeadsTo?: (number | Skill)[] | null;
   skillsRequires?: (number | Skill)[] | null;
   /**
+   * По фразе на строку, до 10: как мама сказала бы своими словами — «не спит днём», «устала и срываюсь». Помогает поиску найти материал.
+   */
+  howMomsAsk?: string | null;
+  /**
    * Меньше — выше в списке и раньше в ленте.
    */
   order: number;
@@ -317,7 +321,7 @@ export interface Skill {
    */
   tag?: (number | null) | Tag;
   /**
-   * По одной фразе в строке: «пополз», «ползает». Так бот понимает голосовую запись календаря (ТЗ 10.4). Пусто — стартовый список из docs/teksty-etap-2.md.
+   * По одной фразе в строке: «пополз», «ползает». Так бот понимает голосовую запись календаря (ТЗ 10.4). Пусто — стартовый список (его можно посмотреть у разработчика).
    */
   synonyms?: string | null;
   hidden?: boolean | null;
@@ -705,6 +709,7 @@ export interface MaterialsSelect<T extends boolean = true> {
   tags?: T;
   skillsLeadsTo?: T;
   skillsRequires?: T;
+  howMomsAsk?: T;
   order?: T;
   minutes?: T;
   minutesManual?: T;
@@ -1020,6 +1025,7 @@ export interface Text {
   afterConsent?: string | null;
   openViaBot?: string | null;
   mainMenu?: string | null;
+  inactiveWarning?: string | null;
   helpButton?: string | null;
   settingsButton?: string | null;
   backButton?: string | null;
@@ -1313,7 +1319,7 @@ export interface Setting {
   musicWidget?: boolean | null;
   feedPerWeek?: number | null;
   /**
-   * Пункт «Календарь навыков» в окне согласий, «Записать навык» в боте, экран календаря. Для мам — только после решения юриста (Р23).
+   * Пункт «Календарь навыков» в окне согласий, «Записать навык» в боте, экран календаря. Сейчас включён для тестирования; голосовые распознаются шаблоном (сервис речи — после Р4). Для мам — только после решения юриста (Р23).
    */
   calendarEnabled?: boolean | null;
   /**
@@ -1324,6 +1330,15 @@ export interface Setting {
    * Если юрист скажет, что эти согласия даются только своей галочкой.
    */
   acceptAllSkipsOptional?: boolean | null;
+  /**
+   * Мама без действий в боте и приложении получает предупреждение, через 2 недели её данные удаляются, как при отзыве согласия (записи об оплате остаются). Включать после решения заказчицы и юриста.
+   */
+  inactiveCleanup?: boolean | null;
+  inactiveMonths?: number | null;
+  /**
+   * Только число отзывов по типу согласия и дню, без мам. Включать, если юрист скажет, что журнал нужен.
+   */
+  revocationLog?: boolean | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1345,6 +1360,7 @@ export interface TextsSelect<T extends boolean = true> {
   afterConsent?: T;
   openViaBot?: T;
   mainMenu?: T;
+  inactiveWarning?: T;
   helpButton?: T;
   settingsButton?: T;
   backButton?: T;
@@ -1622,6 +1638,9 @@ export interface SettingsSelect<T extends boolean = true> {
   calendarEnabled?: T;
   authorNews?: T;
   acceptAllSkipsOptional?: T;
+  inactiveCleanup?: T;
+  inactiveMonths?: T;
+  revocationLog?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
