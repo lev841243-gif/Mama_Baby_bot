@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   if (!body || !Array.isArray(body.errors)) return NextResponse.json({ ok: false }, { status: 400 })
   log.warn(
     {
-      stage: cut(body.stage, 30),
+      stage: cut(body.stage, 120),
       ua: cut(body.ua, 200),
       errors: body.errors.slice(0, 10).map((e) => cut(e, 400)),
     },

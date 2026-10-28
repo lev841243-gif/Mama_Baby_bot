@@ -28,10 +28,15 @@ const BOOT_GUARD = `(function(){
     else add((e.message||'error')+' @ '+(e.filename||'')+':'+(e.lineno||'')+':'+(e.colno||''));
   },true);
   window.addEventListener('unhandledrejection',function(e){ var r=e.reason; add('rejection: '+(r&&(r.stack||r.message)||r)); });
+  ['warn','error'].forEach(function(k){
+    var orig=console[k];
+    console[k]=function(){ try{ add(k+': '+Array.prototype.map.call(arguments,function(a){ return a&&a.stack?a.stack:String(a); }).join(' ')); }catch(_){} return orig.apply(console,arguments); };
+  });
   setTimeout(function(){
-    var mounted=document.documentElement.getAttribute('data-app-mounted');
-    if(mounted&&!errs.length) return;
-    try{ fetch('/api/client-error',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({stage:mounted?'mounted':'not-mounted',errors:errs,ua:navigator.userAgent})}); }catch(_){}
+    var el=document.documentElement, mounted=el.getAttribute('data-app-mounted');
+    var stage=(mounted?'mounted':'not-mounted')+' ready='+(el.getAttribute('data-tg-ready')||'no')+' state='+document.readyState+' tg='+(window.TelegramWebviewProxy?'ios':window.TelegramWebview?'android':window.external&&'notify' in window.external?'desktop':'none');
+    // TODO: временно шлём отчёт при каждом открытии — ищем белый экран на iOS. Убрать после исправления.
+    try{ fetch('/api/client-error',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({stage:stage,errors:errs,ua:navigator.userAgent})}); }catch(_){}
     if(mounted) return;
     var d=document.createElement('div');
     d.style.cssText='position:fixed;inset:0;z-index:99999;background:#fff;color:#000;padding:16px;font:14px/1.4 -apple-system,sans-serif;overflow:auto';

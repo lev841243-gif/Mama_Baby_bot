@@ -99,7 +99,11 @@ function setupTelegram(): TgEnv {
     }
   })
   document.documentElement.dataset.tg = '1'
-  optional('ready', () => miniApp.ready.ifAvailable())
+  optional('ready', () => {
+    const r = miniApp.ready.ifAvailable()
+    // Для диагностики белого экрана (layout): дошло ли до сигнала «готово» для Telegram.
+    document.documentElement.setAttribute('data-tg-ready', r[0] ? 'sent' : 'unavailable')
+  })
   const initData = retrieveRawInitData()
   if (!initData) return { ok: false }
   const platform = retrieveLaunchParams().tgWebAppPlatform
