@@ -18,6 +18,8 @@ set_var PUBLIC_URL "https://$domain"
 set_var POSTGRES_PASSWORD "$pg_password"
 set_var PAYLOAD_SECRET "$(openssl rand -hex 32)"
 set_var LOG_HASH_SECRET "$(openssl rand -hex 32)"
+set_var INTERNAL_SECRET "$(openssl rand -hex 32)"
+set_var GLITCHTIP_SECRET_KEY "$(openssl rand -hex 32)"
 # На время разработки бот открыт всем, вошедшие — тестировщики (решение Льва 28.10.2026).
 set_var CLOSED_MODE false
 set_var TESTER_PHASE true

@@ -105,8 +105,15 @@ docker compose restart worker
 docker compose exec postgres psql -U mama mama
 ```
 
+## Текущий сервер
+
+- Beget Cloud, СПб, 2 vCPU / 6 ГБ / 50 ГБ NVMe, Ubuntu 24.04, IP `159.194.245.43`, репозиторий — `/opt/mama`.
+- Домен пока временный: `159-194-245-43.sslip.io`. Свой домен: A-запись → IP, затем в `.env` поменять `DOMAIN` и `PUBLIC_URL` и `docker compose up -d` (Caddy выпустит сертификат, worker переставит кнопку меню).
+- Вход: `ssh -i ~/.ssh/mama_vps root@159.194.245.43`. Если SSH оборвался при открытом nano, правка остаётся в `.env.save` — перенести нужную строку в `.env` и удалить `.env.save` (в нём секреты).
+- Секреты на скриншотах и в чатах не показывать; засвеченный секрет — заменить (`openssl rand -hex 32`). Пароль Postgres после первого запуска меняется только вместе с `ALTER USER`.
+
 ## Следующие шаги
 
-- **Шаг 3:** файлы — S3-совместимое хранилище в РФ (S3 Beget) для `@payloadcms/storage-s3`; ключи — в `.env`.
-- **Шаг 11:** GitHub Actions (сборка, миграции по порядку, деплой), GlitchTip, Uptime Kuma, алерты в Telegram, ежедневный `pg_dump` в S3 Beget с хранением 30 дней.
-- Перед бета-тестом с мамами: `CLOSED_MODE=true`, `TESTER_PHASE=false`, «Удалить данные тестировщиков» в админке.
+- **Файлы:** бакет S3 Beget, ключи в `.env` (`S3_*`). Пока `S3_BUCKET` пуст, медиа лежат в томе `media` на сервере.
+- **Эксплуатация** ([ekspluatatsiya.md](ekspluatatsiya.md)): ежедневный бэкап в S3 Beget (`BACKUP_S3_BUCKET`), GlitchTip и Uptime Kuma (`--profile monitoring`), алерты в Telegram (`ALERT_CHAT_ID`), деплой из GitHub Actions.
+- Перед бета-тестом с мамами: закрытый режим и «Идёт тестирование» — в «Настройках проекта» админки, «Удалить данные тестировщиков».
