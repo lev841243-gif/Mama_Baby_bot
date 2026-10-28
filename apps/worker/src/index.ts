@@ -18,6 +18,7 @@ import {
   hashTgId,
   markReminded,
   runFeedTick,
+  runInactiveCleanup,
   setBotBlocked,
   speechProvider,
   type BotJob,
@@ -195,6 +196,14 @@ const worker = new Worker<BotJob['data'], void, BotJob['name']>(
       case 'subscriptions-tick':
         await remindSubscriptions()
         break
+      case 'inactive-tick': {
+        // TODO(Р9): выключено в «Настройках проекта», пока не решат заказчица и юрист.
+        const res = await runInactiveCleanup(db, (id) =>
+          sendToUser(id, () => bot.api.sendMessage(id, T.inactiveWarning, { reply_markup: mainMenu() })),
+        )
+        if (res.warned + res.deleted > 0) log.info(res, 'inactive cleanup')
+        break
+      }
       case 'channel-button': {
         // Кнопка под постом канала: url-кнопка (web_app в каналах нельзя), ведёт в приложение на материал.
         const { postId, materialId } = job.data as Extract<BotJob, { name: 'channel-button' }>['data']
@@ -280,6 +289,7 @@ async function syncDescription() {
 /** Повторяющиеся задачи: проверка подписок раз в час. Upsert не плодит дублей при перезапуске. */
 const scheduler = new Queue(QUEUE_BOT, { connection: createRedis() })
 await scheduler.upsertJobScheduler('subscriptions-tick', { every: 60 * 60 * 1000 }, { name: 'subscriptions-tick', data: {} })
+await scheduler.upsertJobScheduler('inactive-tick', { every: 6 * 60 * 60 * 1000 }, { name: 'inactive-tick', data: {} })
 const feedScheduler = new Queue(QUEUE_FEED, { connection: createRedis() })
 await feedScheduler.upsertJobScheduler('feed-tick', { every: 15 * 60 * 1000 }, { name: 'feed-tick', data: {} })
 

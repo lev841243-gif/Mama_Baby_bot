@@ -19,6 +19,7 @@ import {
   updateCalendarEntry,
 } from './calendar'
 import { resetSettingsCache, setAppSettings } from './settings'
+import { runInactiveCleanup } from './inactive'
 
 const url = process.env.TEST_DATABASE_URL
 // Отрицательные ID в Telegram не бывают — тестовые записи не пересекутся с настоящими.
@@ -315,6 +316,51 @@ test('календарь: только с согласием, удаление �
       const [u] = await tx.select().from(users).where(eq(users.tgId, D))
       assert.equal((await tx.select().from(skillCalendar).where(eq(skillCalendar.userId, u!.id))).length, 0)
       assert.equal((await listCalendar(tx, E)).length, 1, 'у другой мамы всё на месте')
+      throw new Rollback()
+    })
+    .catch((err: unknown) => {
+      if (!(err instanceof Rollback)) throw err
+    })
+  resetSettingsCache()
+})
+
+test('Р9: неактивных сначала предупреждаем, через 2 недели удаляем; выключено — ничего; Р10: счётчик отзывов без ID', { skip: !url }, async () => {
+  const F = -1006
+  const G = -1007
+  class Rollback extends Error {}
+  await db
+    .transaction(async (txRaw) => {
+      const tx = txRaw as unknown as Db
+      await grantConsents(tx, F, ['pd'], { isTester: true })
+      await grantConsents(tx, G, ['pd'], { isTester: true })
+      const yearAgo = new Date(Date.now() - 400 * 86_400_000)
+      await tx.update(users).set({ lastActiveAt: yearAgo }).where(inArray(users.tgId, [F, G]))
+      await tx.update(users).set({ lastActiveAt: new Date() }).where(eq(users.tgId, G))
+      const warned: number[] = []
+      const warn = async (id: number) => {
+        warned.push(id)
+        return 'ok' as const
+      }
+      // Флаг выключен — ничего не происходит.
+      await setAppSettings(tx, { inactiveCleanup: false })
+      assert.deepEqual(await runInactiveCleanup(tx, warn), { warned: 0, deleted: 0 })
+
+      await setAppSettings(tx, { inactiveCleanup: true, inactiveMonths: 12 })
+      const r1 = await runInactiveCleanup(tx, warn)
+      assert.deepEqual(warned, [F], 'активную маму не трогаем')
+      assert.equal(r1.deleted, 0, 'в день предупреждения не удаляем')
+      // Через 2 недели — удалена; активная — на месте.
+      const r2 = await runInactiveCleanup(tx, warn, new Date(Date.now() + 15 * 86_400_000))
+      assert.equal(r2.deleted, 1)
+      assert.equal((await tx.select().from(users).where(eq(users.tgId, F))).length, 0)
+      assert.equal((await tx.select().from(users).where(eq(users.tgId, G))).length, 1)
+
+      // Р10: отзыв ленты пишет только «тип + день + число».
+      await setAppSettings(tx, { revocationLog: true })
+      await grantConsents(tx, G, ['pd', 'feed'], { isTester: true })
+      await revokeConsent(tx, G, 'feed')
+      const rows = await tx.execute<{ kind: string; count: number }>(sql`select kind, count from app.stat_daily where kind = 'revoked:feed'`)
+      assert.ok(Number(rows[0]?.count) >= 1)
       throw new Rollback()
     })
     .catch((err: unknown) => {

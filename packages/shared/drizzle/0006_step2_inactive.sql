@@ -1,0 +1,1 @@
+ALTER TABLE "app"."users" ADD COLUMN "inactive_warned_at" timestamp with time zone;

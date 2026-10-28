@@ -36,6 +36,11 @@ export type AppSettings = {
   authorNews: boolean
   /** Р27: календарь и новости автора не входят в «Принять всё», только своей галочкой. */
   acceptAllSkipsOptional: boolean
+  /** Р9: удалять мам без действий `inactiveMonths` месяцев (кроме записей об оплате), предупредив за 2 недели. */
+  inactiveCleanup: boolean
+  inactiveMonths: number
+  /** Р10: обезличенный журнал отзывов — тип согласия, день, число; без ID. */
+  revocationLog: boolean
 }
 
 export type Texts = Record<TextKey, string>
@@ -61,6 +66,9 @@ export const SETTINGS_KEYS = [
   'calendarEnabled',
   'authorNews',
   'acceptAllSkipsOptional',
+  'inactiveCleanup',
+  'inactiveMonths',
+  'revocationLog',
 ] as const
 export const CONFIG_KEYS = { texts: 'texts', redWords: 'redWords', consentVersions: 'consentVersions', subscription: 'subscription' } as const
 
@@ -88,6 +96,11 @@ export function defaultSettings(): AppSettings {
     authorNews: false,
     // TODO(Р27): решает юрист.
     acceptAllSkipsOptional: false,
+    // TODO(Р9): включить, если заказчица и юрист согласятся.
+    inactiveCleanup: false,
+    inactiveMonths: 12,
+    // TODO(Р10): включить, если юрист скажет, что журнал нужен.
+    revocationLog: false,
   }
 }
 

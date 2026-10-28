@@ -108,5 +108,29 @@ export const Settings: GlobalConfig = {
         },
       ],
     },
+    {
+      type: 'collapsible',
+      label: 'Хранение данных (Р9, Р10)',
+      fields: [
+        {
+          name: 'inactiveCleanup',
+          label: 'Удалять данные неактивных (Р9)',
+          type: 'checkbox',
+          defaultValue: d.inactiveCleanup,
+          admin: {
+            description:
+              'Мама без действий в боте и приложении получает предупреждение, через 2 недели её данные удаляются, как при отзыве согласия (записи об оплате остаются). Включать после решения заказчицы и юриста.',
+          },
+        },
+        { name: 'inactiveMonths', label: 'Через сколько месяцев без действий', type: 'number', min: 1, max: 36, defaultValue: d.inactiveMonths },
+        {
+          name: 'revocationLog',
+          label: 'Журнал отзывов согласия (Р10)',
+          type: 'checkbox',
+          defaultValue: d.revocationLog,
+          admin: { description: 'Только число отзывов по типу согласия и дню, без мам. Включать, если юрист скажет, что журнал нужен.' },
+        },
+      ],
+    },
   ],
 }

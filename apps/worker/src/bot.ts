@@ -169,7 +169,7 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
   bot.command('revoke', askRevoke)
   bot.callbackQuery('revoke', askRevoke)
   bot.callbackQuery('revoke:yes', async (ctx) => {
-    const deleted = await deleteUserData(db, ctx.from.id)
+    const deleted = await deleteUserData(db, ctx.from.id, { reason: 'revoke' })
     if (deleted) log.info({ user: hashTgId(ctx.from.id) }, 'user data deleted (bot)')
     await show(ctx, deleted ? T.revokeDone : T.revokeNothing, new InlineKeyboard())
   })

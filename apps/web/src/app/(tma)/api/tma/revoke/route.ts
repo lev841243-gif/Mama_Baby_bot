@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 /** «Отозвать согласие» в настройках приложения: то же, что /revoke в боте (ТЗ 6.5, 8.1). */
 export const POST = tmaRoute(
   async ({ tgId }) => {
-    const deleted = await deleteUserData(getDb(), tgId)
+    const deleted = await deleteUserData(getDb(), tgId, { reason: 'revoke' })
     if (deleted) {
       log.info({ user: hashTgId(tgId) }, 'user data deleted (app)')
       await notifyDataDeleted(tgId)

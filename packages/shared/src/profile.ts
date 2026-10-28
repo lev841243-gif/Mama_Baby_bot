@@ -1,4 +1,4 @@
-import { and, eq, lt } from 'drizzle-orm'
+import { and, eq, isNotNull, lt, or } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db } from './db/client'
 import { users } from './db/schema'
@@ -28,13 +28,16 @@ export async function getChildBirth(db: Db, tgId: number) {
   return row?.year && row.month ? { year: row.year, month: row.month } : null
 }
 
-/** Отметка активности для удаления неактивных через 12 месяцев (Р9). Пишем не чаще раза в сутки. */
+/**
+ * Отметка активности для удаления неактивных (Р9): бот и приложение. Пишем не чаще раза в сутки;
+ * действие после предупреждения его отменяет.
+ */
 export async function touchUser(db: Db, tgId: number) {
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
   await db
     .update(users)
-    .set({ lastActiveAt: new Date() })
-    .where(and(eq(users.tgId, tgId), lt(users.lastActiveAt, dayAgo)))
+    .set({ lastActiveAt: new Date(), inactiveWarnedAt: null })
+    .where(and(eq(users.tgId, tgId), or(lt(users.lastActiveAt, dayAgo), isNotNull(users.inactiveWarnedAt))))
 }
 
 /** Мама заблокировала бот или разблокировала его (ТЗ 13): рассылка ей не идёт. */

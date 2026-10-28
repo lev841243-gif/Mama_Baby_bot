@@ -179,10 +179,20 @@ export async function grantOptionalConsent(db: Db, tgId: number, type: Exclude<C
 /**
  * Полный отзыв согласия (ТЗ 6.5, 11.5): физическое удаление мамы. Всё её — через ON DELETE CASCADE,
  * записи об оплате остаются с обнулённой ссылкой. Возвращает false, если удалять было нечего.
+ * `reason: 'revoke'` — это отзыв мамой (попадает в журнал отзывов Р10), а не удаление неактивных или тестировщиков.
  */
-export async function deleteUserData(db: Db, tgId: number): Promise<boolean> {
+export async function deleteUserData(db: Db, tgId: number, opts: { reason?: 'revoke' } = {}): Promise<boolean> {
   const deleted = await db.delete(users).where(eq(users.tgId, tgId)).returning({ id: users.id })
+  if (deleted.length > 0 && opts.reason === 'revoke') await logRevocation(db, 'pd')
   return deleted.length > 0
+}
+
+/**
+ * TODO(Р10): журнал отзывов — только «тип согласия + день + число», без ID и версий мамы (ТЗ 11.2).
+ * Пишется, только если включён в «Настройках проекта».
+ */
+async function logRevocation(db: Db, type: ConsentType) {
+  if ((await getSettings(db)).revocationLog) await bumpDaily(db, `revoked:${type}`)
 }
 
 export const revokeConsentInput = z.object({ type: z.enum(CONSENT_TYPES) })
@@ -192,7 +202,7 @@ export const revokeConsentInput = z.object({ type: z.enum(CONSENT_TYPES) })
  * Необязательное — закрывается, и удаляются данные, нужные только для него.
  */
 export async function revokeConsent(db: Db, tgId: number, type: ConsentType): Promise<'deleted' | 'revoked' | 'none'> {
-  if (type === 'pd') return (await deleteUserData(db, tgId)) ? 'deleted' : 'none'
+  if (type === 'pd') return (await deleteUserData(db, tgId, { reason: 'revoke' })) ? 'deleted' : 'none'
 
   return db.transaction(async (tx) => {
     const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.tgId, tgId)).limit(1)
@@ -202,7 +212,6 @@ export async function revokeConsent(db: Db, tgId: number, type: ConsentType): Pr
       .set({ revokedAt: new Date() })
       .where(and(eq(consents.userId, user.id), eq(consents.type, type), isNull(consents.revokedAt)))
       .returning({ id: consents.id })
-    // TODO(Р10): журнал отзывов (тип, версия, дата — без ID), если юрист скажет, что он нужен.
     // Данные, нужные только для этого согласия (ТЗ 11.1, 8.9): настройки и отправленное лентой, записи календаря.
     if (type === 'feed') {
       await tx.delete(feedSettings).where(eq(feedSettings.userId, user.id))
@@ -210,6 +219,7 @@ export async function revokeConsent(db: Db, tgId: number, type: ConsentType): Pr
     }
     if (type === 'calendar') await tx.delete(skillCalendar).where(eq(skillCalendar.userId, user.id))
     if (type === 'feed' && closed.length > 0) await bumpDaily(tx as unknown as Db, 'feed_unsubscribed')
+    if (closed.length > 0) await logRevocation(tx as unknown as Db, type)
     return closed.length > 0 ? 'revoked' : 'none'
   })
 }

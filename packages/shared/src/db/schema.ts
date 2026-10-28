@@ -35,6 +35,8 @@ export const users = app.table('users', {
   childBirthYear: smallint('child_birth_year'),
   childBirthMonth: smallint('child_birth_month'),
   botBlocked: boolean('bot_blocked').notNull().default(false),
+  // Р9: предупреждение «данные удалятся через 2 недели без действий» отправлено; любое действие его сбрасывает.
+  inactiveWarnedAt: timestamp('inactive_warned_at', { withTimezone: true }),
   createdAt: createdAt(),
   lastActiveAt: timestamp('last_active_at', { withTimezone: true }).notNull().defaultNow(),
 })

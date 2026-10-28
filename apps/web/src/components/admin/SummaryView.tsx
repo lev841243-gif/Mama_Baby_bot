@@ -67,6 +67,13 @@ export async function SummaryView(props: AdminViewServerProps) {
       />
       <Table head={['Лента: возраст малыша', 'Подписаны']} empty="Пока никто не подписан." rows={s.feed.bySection.map((r) => [r.section, r.count])} />
 
+      {s.revocations.length > 0 && (
+        <>
+          <h3>Отзывы согласий (Р10)</h3>
+          <Table head={['Согласие', 'Отзывов']} empty="" rows={s.revocations.map((r) => [{ pd: 'Основное', feed: 'Лента', calendar: 'Календарь', ads: 'Новости автора' }[r.type] ?? r.type, r.count])} />
+        </>
+      )}
+
       <h3>Популярные материалы</h3>
       <Table head={['Материал', 'Просмотры', 'Прослушивания']} empty="Пока нет просмотров." rows={s.popular.map((r) => [r.title, r.views, r.listens])} />
 

@@ -275,6 +275,10 @@ export const DEFAULT_TEXTS = {
   calRestart: 'Начать заново',
   calKeep: 'Сохранить записи',
   calCleared: 'Записи календаря удалены. Остальные данные остались.',
+
+  // Р9: удаление неактивных (выключено до решения)
+  inactiveWarning:
+    'Вы давно не заходили. Если в ближайшие 2 недели вы не откроете бот или приложение, ваши данные будут удалены, как при отзыве согласия. Чтобы их сохранить, просто откройте приложение.',
 } as const
 
 export type TextKey = keyof typeof DEFAULT_TEXTS
@@ -302,6 +306,7 @@ export const TEXT_GROUPS: { label: string; texts: Partial<Record<TextKey, string
     label: 'Меню и помощь',
     texts: {
       mainMenu: 'Главное меню',
+      inactiveWarning: 'Предупреждение неактивным (Р9)',
       helpButton: 'Кнопка «Помощь»',
       settingsButton: 'Кнопка «Настройки»',
       backButton: 'Кнопка «Назад»',

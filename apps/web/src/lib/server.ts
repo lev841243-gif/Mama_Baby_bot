@@ -11,6 +11,7 @@ import {
   getConfig,
   getSettings,
   hashTgId,
+  touchUser,
   visibleConsentItems,
   type ConsentState,
 } from '@mama/shared'
@@ -90,9 +91,12 @@ export function tmaRoute(handler: Handler, { requireConsent = true }: RouteOptio
       }
       // Все, кто вошёл во время тестирования, помечаются тестировщиками — их данные удалятся перед бета-тестом (ТЗ 14).
       const { testerPhase } = await getSettings(getDb())
-      if (requireConsent && !(await getConsentState(getDb(), tgId)).pdValid) {
+      const consent = await getConsentState(getDb(), tgId)
+      if (requireConsent && !consent.pdValid) {
         return NextResponse.json({ status: 'needConsent' }, { status: 403 })
       }
+      // Активность в приложении тоже считается: неактивных удаляют только без действий и там, и в боте (Р9).
+      if (consent.pdValid) await touchUser(getDb(), tgId)
       return await handler({ tgId, isTester: testerPhase, req })
     } catch (e) {
       log.error({ err: e, user: hashTgId(tgId) }, 'tma api error')

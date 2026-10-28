@@ -43,6 +43,13 @@
       "when": 1793169560662,
       "tag": "0005_step2_feed_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793180523587,
+      "tag": "0006_step2_inactive",
+      "breakpoints": true
     }
   ]
 }

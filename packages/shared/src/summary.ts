@@ -20,6 +20,8 @@ export type Summary = {
   subscriptionsActive: number
   /** Включённые календари навыков (ТЗ 11.2) — число, без мам. */
   calendarsActive: number
+  /** Р10: отзывы согласий за период по типу (только если журнал включён). */
+  revocations: { type: string; count: number }[]
   popular: { title: string; views: number; listens: number }[]
   hard: { title: string; hard: number; done: number }[]
   wanted: { topic: string; count: number }[]
@@ -53,6 +55,8 @@ export async function buildSummary(db: Db, days = 30): Promise<Summary> {
 
   const [unsub] = await db.execute<{ c: number }>(sql`select coalesce(sum(count), 0) c from app.stat_daily where kind = 'feed_unsubscribed' and day >= ${since}`)
   const [subs] = await db.execute<{ c: number }>(sql`select count(*) c from app.subscriptions where ends_at > now()`)
+  const revocations = await db.execute<{ kind: string; c: number }>(sql`
+    select kind, sum(count) c from app.stat_daily where kind like 'revoked:%' and day >= ${since} group by kind order by kind`)
   const [cals] = await db.execute<{ c: number }>(sql`select count(*) c from app.consents where type = 'calendar' and revoked_at is null`)
 
   const popular = await db.execute<{ title: string; views: number; listens: number }>(sql`
@@ -91,6 +95,7 @@ export async function buildSummary(db: Db, days = 30): Promise<Summary> {
     feed: { total: feedRows.length, bySection: [...bySection].map(([section, count]) => ({ section, count })), unsubscribed30: n(unsub?.c) },
     subscriptionsActive: n(subs?.c),
     calendarsActive: n(cals?.c),
+    revocations: revocations.map((r) => ({ type: r.kind.slice('revoked:'.length), count: n(r.c) })),
     popular: popular.map((r) => ({ title: r.title, views: n(r.views), listens: n(r.listens) })),
     hard: hard.map((r) => ({ title: r.title, hard: n(r.hard), done: n(r.done) })),
     wanted: wanted.map((r) => ({ topic: r.topic, count: n(r.count) })),
