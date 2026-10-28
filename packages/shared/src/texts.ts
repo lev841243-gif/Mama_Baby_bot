@@ -119,6 +119,35 @@ export const DEFAULT_TEXTS = {
   ageNotSet: 'не указан',
   ageSaveButton: 'Сохранить',
   fontBigger: 'Крупнее шрифт',
+
+  // «Спокойная мама», аудио, подбор, музыка, «Полезное» (ТЗ 8.3–8.5, 8.7)
+  calmMomButton: 'Спокойная мама',
+  calmMomTitle: 'Спокойная мама',
+  calmMomIntro: 'Телесные и психологические практики для вас. Несколько минут — и чуть спокойнее.',
+  tabBody: 'Телесные',
+  tabPsy: 'Психологические',
+  calmEmpty: 'Практики скоро появятся.',
+  practiceDone: 'Выполнено',
+  practiceDoneMarked: 'Отмечено ✓',
+  audioSendToChat: 'Прислать в чат',
+  audioSent: 'Отправили в чат с ботом: там аудио играет и при выключенном экране.',
+  audioSendError: 'Не получилось отправить. Попробуйте ещё раз.',
+  audioSpeed: 'Скорость',
+  matchButton: 'Что уже умеет малыш?',
+  matchTitle: 'Что уже умеет малыш?',
+  matchIntro: 'Отметьте, что малыш уже умеет, — подберём упражнения. Отметки нигде не сохраняются.',
+  matchShow: 'Подобрать упражнения',
+  matchResult: 'Можно попробовать',
+  matchEmpty: 'Подходящих упражнений пока нет. Вот упражнения по возрасту:',
+  musicButton: 'Потешки и музыка',
+  musicTitle: 'Потешки и музыка',
+  musicNote: 'Музыка открывается в Яндекс Музыке. Прослушивание — по правилам Яндекса.',
+  musicOpen: 'Слушать в Яндекс Музыке',
+  musicEmpty: 'Плейлисты скоро появятся.',
+  usefulButton: 'Полезное',
+  usefulTitle: 'Полезное',
+  usefulNote: 'Ссылки ведут на сайты автора и партнёров. Условия покупки на них определяют их владельцы.',
+  usefulEmpty: 'Ссылки скоро появятся.',
 } as const
 
 export type TextKey = keyof typeof DEFAULT_TEXTS
@@ -248,6 +277,38 @@ export const TEXT_GROUPS: { label: string; texts: Partial<Record<TextKey, string
       fontBigger: 'Переключатель «Крупнее шрифт»',
     },
   },
+  {
+    label: 'Приложение: практики, подбор, музыка',
+    texts: {
+      calmMomButton: 'Кнопка «Спокойная мама»',
+      calmMomTitle: '«Спокойная мама»: заголовок',
+      calmMomIntro: '«Спокойная мама»: вступление',
+      tabBody: 'Вкладка «Телесные»',
+      tabPsy: 'Вкладка «Психологические»',
+      calmEmpty: 'Практик ещё нет',
+      practiceDone: 'Кнопка «Выполнено» у практики',
+      practiceDoneMarked: 'Практика отмечена',
+      audioSendToChat: 'Кнопка «Прислать в чат»',
+      audioSent: 'Аудио отправлено в чат',
+      audioSendError: 'Аудио не отправилось',
+      audioSpeed: 'Плеер: «Скорость»',
+      matchButton: 'Кнопка «Что уже умеет малыш?»',
+      matchTitle: 'Подбор: заголовок',
+      matchIntro: 'Подбор: вступление',
+      matchShow: 'Подбор: кнопка',
+      matchResult: 'Подбор: заголовок результата',
+      matchEmpty: 'Подбор: подходящих нет',
+      musicButton: 'Кнопка «Потешки и музыка»',
+      musicTitle: 'Музыка: заголовок',
+      musicNote: 'Музыка: пояснение про Яндекс',
+      musicOpen: 'Кнопка «Слушать в Яндекс Музыке»',
+      musicEmpty: 'Плейлистов ещё нет',
+      usefulButton: 'Кнопка «Полезное»',
+      usefulTitle: '«Полезное»: заголовок',
+      usefulNote: '«Полезное»: пояснение',
+      usefulEmpty: 'Ссылок ещё нет',
+    },
+  },
 ]
 
 export const TEXT_LABELS = Object.assign({}, ...TEXT_GROUPS.map((g) => g.texts)) as Record<TextKey, string>
@@ -298,6 +359,7 @@ export const CLIENT_TEXT_KEYS = [
   'ageClearButton',
   'ageTooYoung',
   ...(Object.keys(TEXT_GROUPS.find((g) => g.label === 'Приложение: материалы')!.texts) as TextKey[]),
+  ...(Object.keys(TEXT_GROUPS.find((g) => g.label === 'Приложение: практики, подбор, музыка')!.texts) as TextKey[]),
 ] as const satisfies readonly TextKey[]
 
 export type ClientTextKey = (typeof CLIENT_TEXT_KEYS)[number]

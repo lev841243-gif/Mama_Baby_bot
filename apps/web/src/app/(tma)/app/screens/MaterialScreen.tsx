@@ -72,6 +72,11 @@ export function MaterialScreen({ id, section }: { id: number; section?: AgeSecti
           return r.next
         },
         onOpen: (next) => nav.replace({ name: 'material', id: next, section }),
+        onAudio: (action) =>
+          api('/api/tma/audio', initData, { id, action }).then(
+            () => true,
+            () => false,
+          ),
       }}
     />
   )

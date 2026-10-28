@@ -8,6 +8,8 @@ export type BotJob =
   | { name: 'consent-granted'; data: { tgId: number } }
   /** Мама отозвала согласие в приложении → последнее сообщение в чат (ТЗ 6.5). */
   | { name: 'data-deleted'; data: { tgId: number } }
+  /** «Прислать в чат» (ТЗ 8.4): аудио играет как обычное аудио Telegram, в том числе в фоне. Доступ проверен в web. */
+  | { name: 'send-audio'; data: { tgId: number; mediaId: number; title: string; url: string } }
   /** Тестовая отправка анонса автору себе в бот (ТЗ 9.4). */
   | { name: 'test-announce'; data: { tgId: number; materialId: number; title: string; announce: string; photoUrl?: string } }
 

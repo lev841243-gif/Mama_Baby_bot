@@ -5,6 +5,7 @@ import useEmblaCarousel from 'embla-carousel-react'
 import { useCallback, useEffect, useState } from 'react'
 import type { MaterialView } from '@/lib/material-view'
 import type { Card } from '@/lib/tma-types'
+import { AudioPlayer } from './AudioPlayer'
 import { haptic, useMainButton } from './telegram'
 import { CardCell, Disclaimer, Img } from './ui'
 
@@ -15,13 +16,18 @@ export type MaterialActions = {
   onBookmark: (on: boolean) => void
   onFeedback: (result: 'done' | 'hard') => Promise<Card | null>
   onOpen: (id: number) => void
+  onAudio: (action: 'listen' | 'send') => Promise<boolean>
 }
 
 /** Материал как его видит мама. Тот же компонент — в предпросмотре автора (без actions). */
 export function MaterialBody({ m, t, actions, done }: { m: MaterialView; t: T; actions?: MaterialActions; done?: boolean }) {
   return (
     <article className="pb-4">
-      {m.type === 'exercise' ? <ExerciseView m={m} t={t} actions={actions} done={done} /> : <ArticleView m={m} t={t} />}
+      {m.type === 'exercise' ? (
+        <ExerciseView m={m} t={t} actions={actions} done={done} />
+      ) : (
+        <ArticleView m={m} t={t} actions={actions} done={done} />
+      )}
       {actions && (
         <div className="px-4 pt-2">
           <Button mode={actions.bookmarked ? 'plain' : 'bezeled'} size="m" stretched onClick={() => actions.onBookmark(!actions.bookmarked)}>
@@ -56,20 +62,51 @@ function Block({ title, text }: { title: string; text: string }) {
   )
 }
 
-function AudioBlock({ m }: { m: MaterialView }) {
-  // Полноценный плеер со скоростью и «Прислать в чат» — шаг 6.
+function AudioBlock({ m, t, actions }: { m: MaterialView; t: T; actions?: MaterialActions }) {
   if (!m.audio) return null
-  return <audio controls preload="none" src={m.audio.src} className="mx-4 mt-3 w-[calc(100%-2rem)]" />
+  return (
+    <AudioPlayer
+      src={m.audio.src}
+      materialId={m.id}
+      t={t}
+      onListen={actions ? () => void actions.onAudio('listen') : undefined}
+      onSend={actions ? () => actions.onAudio('send') : undefined}
+    />
+  )
 }
 
-function ArticleView({ m, t }: { m: MaterialView; t: T }) {
+/** «Выполнено» у практик «Спокойной мамы» (ТЗ 8.1, п. 6). */
+function PracticeDone({ t, actions, done }: { t: T; actions?: MaterialActions; done?: boolean }) {
+  const [marked, setMarked] = useState(Boolean(done))
+  if (!actions) return null
+  return (
+    <div className="px-4 pt-3">
+      <Button
+        size="l"
+        stretched
+        mode={marked ? 'bezeled' : 'filled'}
+        disabled={marked}
+        onClick={async () => {
+          await actions.onFeedback('done')
+          haptic((h) => h.notificationOccurred('success'))
+          setMarked(true)
+        }}
+      >
+        {marked ? t.practiceDoneMarked : t.practiceDone}
+      </Button>
+    </div>
+  )
+}
+
+function ArticleView({ m, t, actions, done }: { m: MaterialView; t: T; actions?: MaterialActions; done?: boolean }) {
   return (
     <>
       {m.cover && <Img img={m.cover} eager className="aspect-[4/3] w-full object-cover" />}
       <h1 className="px-4 pt-3 text-[24px] font-semibold leading-tight">{m.title}</h1>
       <Meta m={m} t={t} />
-      <AudioBlock m={m} />
+      <AudioBlock m={m} t={t} actions={actions} />
       <div className="material-body px-4" dangerouslySetInnerHTML={{ __html: m.bodyHtml }} />
+      {(m.type === 'body' || m.type === 'psy') && <PracticeDone t={t} actions={actions} done={done} />}
     </>
   )
 }
@@ -100,7 +137,7 @@ function ExerciseView({ m, t, actions, done }: { m: MaterialView; t: T; actions?
     <>
       <h1 className="px-4 pt-3 text-[22px] font-semibold leading-tight">{m.title}</h1>
       <Meta m={m} t={t} />
-      <AudioBlock m={m} />
+      <AudioBlock m={m} t={t} actions={actions} />
       <div className="mt-3 overflow-hidden" ref={emblaRef}>
         <div className="flex touch-pan-y">
           {m.steps.map((s, i) => (

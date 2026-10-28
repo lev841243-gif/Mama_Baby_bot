@@ -20,10 +20,14 @@ import { BetaBanner } from './BetaBanner'
 import { ConsentWindow } from './ConsentWindow'
 import { AppCtx, type Nav, type Screen, initialStack, useApp } from './nav'
 import { BookmarksScreen } from './screens/BookmarksScreen'
+import { CalmScreen } from './screens/CalmScreen'
 import { HomeScreen } from './screens/HomeScreen'
+import { MatchScreen } from './screens/MatchScreen'
 import { MaterialScreen } from './screens/MaterialScreen'
+import { MusicScreen } from './screens/MusicScreen'
 import { SectionScreen } from './screens/SectionScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
+import { UsefulScreen } from './screens/UsefulScreen'
 import { startParam, useBackButton } from './telegram'
 
 type TgEnv = { ok: true; initData: string; platform: 'ios' | 'base' } | { ok: false }
@@ -244,6 +248,14 @@ function ScreenView({
       return <MaterialScreen key={screen.id} id={screen.id} section={screen.section} />
     case 'bookmarks':
       return <BookmarksScreen />
+    case 'calm':
+      return <CalmScreen />
+    case 'match':
+      return <MatchScreen />
+    case 'music':
+      return <MusicScreen />
+    case 'useful':
+      return <UsefulScreen />
     case 'settings':
       return <SettingsScreen onDeleted={onDeleted} fontLarge={fontLarge} setFontLarge={setFontLarge} />
     case 'consents':

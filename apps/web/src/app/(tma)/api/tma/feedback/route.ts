@@ -14,7 +14,7 @@ const input = z.object({
 })
 
 /**
- * «Получилось» / «Пока не получается» (ТЗ 8.2). «Получилось» ставит отметку «выполнено» и предлагает
+ * «Получилось» / «Пока не получается» (ТЗ 8.2) и «Выполнено» у практик. «Получилось» ставит отметку «выполнено» и предлагает
  * следующее упражнение раздела. Обезличенный счётчик пишется в обоих случаях (ТЗ 11.2).
  */
 export const POST = tmaRoute(async ({ tgId, req }) => {
@@ -22,7 +22,7 @@ export const POST = tmaRoute(async ({ tgId, req }) => {
   if (!body.success) return NextResponse.json({ error: 'bad_request' }, { status: 400 })
   const { id, result } = body.data
   const found = await getMaterial(id)
-  if (found.status !== 'ok' || found.doc.type !== 'exercise' || !(await canOpen(found.doc, tgId))) {
+  if (found.status !== 'ok' || !['exercise', 'body', 'psy'].includes(String(found.doc.type)) || !(await canOpen(found.doc, tgId))) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 })
   }
   const db = getDb()
@@ -30,6 +30,8 @@ export const POST = tmaRoute(async ({ tgId, req }) => {
   if (result === 'hard') return NextResponse.json({ next: null } satisfies FeedbackPayload)
 
   await markDone(db, tgId, id)
+  // Практики «Спокойной мамы» только отмечаются «выполнено» (ТЗ 8.1, п. 6), следующего не предлагаем.
+  if (found.doc.type !== 'exercise') return NextResponse.json({ next: null } satisfies FeedbackPayload)
   const section =
     (body.data.section as AgeSectionId | undefined) ??
     sectionsForRange(Number(found.doc.ageFrom), Number(found.doc.ageTo))[0]

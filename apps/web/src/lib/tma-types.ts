@@ -27,3 +27,14 @@ export type MaterialPayload =
 export type FeedbackPayload = { next: Card | null }
 
 export type BookmarksPayload = { items: (Card | { id: number; unavailable: true })[] }
+
+export type CalmPayload = { body: Card[]; psy: Card[] }
+
+export type MatchExercise = Card & { leads: number[]; requires: number[] }
+export type MatchPayload = { skills: { id: number; name: string }[]; exercises: MatchExercise[]; yourSection: AgeSectionId | null }
+
+export type Playlist = { id: number; title: string; description: string; kind: string; url: string; embedUrl: string | null }
+export type MusicPayload = { playlists: Playlist[] }
+
+export type UsefulLink = { id: number; title: string; description: string; kind: string; url: string }
+export type UsefulPayload = { links: UsefulLink[] }

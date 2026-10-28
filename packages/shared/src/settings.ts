@@ -24,6 +24,8 @@ export type AppSettings = {
   /** Р11: раздел, где меньше smallSectionMin материалов, не показывается. */
   hideSmallSections: boolean
   smallSectionMin: number
+  /** Р24: встраивать виджет Яндекс Музыки (после проверки на iPhone и Android), иначе только кнопка-ссылка. */
+  musicWidget: boolean
 }
 
 export type Texts = Record<TextKey, string>
@@ -37,7 +39,7 @@ export type SharedConfig = {
 }
 
 /** Ключи app_settings, которые пишет админка. */
-export const SETTINGS_KEYS = ['closedMode', 'betaBanner', 'testerPhase', 'feedPerWeek', 'hideSmallSections', 'smallSectionMin'] as const
+export const SETTINGS_KEYS = ['closedMode', 'betaBanner', 'testerPhase', 'feedPerWeek', 'hideSmallSections', 'smallSectionMin', 'musicWidget'] as const
 export const CONFIG_KEYS = { texts: 'texts', redWords: 'redWords', consentVersions: 'consentVersions' } as const
 
 const flag = (name: string, fallback: boolean) => {
@@ -56,6 +58,8 @@ export function defaultSettings(): AppSettings {
     feedPerWeek: 2,
     hideSmallSections: true,
     smallSectionMin: 5,
+    // TODO(Р24): включить после проверки виджета на телефонах.
+    musicWidget: false,
   }
 }
 

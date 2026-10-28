@@ -189,3 +189,19 @@ test('тестовый анонс: картинка с подписью и кн�
   await sendAnnounce(api, pino({ level: 'silent' }), 'https://example.test', data)
   assert.deepEqual(sent.map((s) => s.method), ['sendPhoto', 'sendMessage'])
 })
+
+test('«Прислать в чат»: первый раз по ссылке, потом по file_id из кеша', async () => {
+  const { sendAudio } = await import('./audio')
+  const store = new Map<string, string>()
+  const redis = { get: async (k: string) => store.get(k) ?? null, set: async (k: string, v: string) => (store.set(k, v), 'OK' as const) }
+  const sent: unknown[] = []
+  const api = new Bot('1:test', { botInfo: { id: 1, is_bot: true, first_name: 'b', username: 'b' } as never }).api
+  api.config.use(async (_prev, method, payload) => {
+    sent.push((payload as { audio: unknown }).audio)
+    return { ok: true, result: { message_id: 1, date: 0, chat: { id: 1, type: 'private' }, audio: { file_id: 'FILE1', file_unique_id: 'u', duration: 1 } } } as never
+  })
+  const d = { tgId: 5, mediaId: 9, title: 'Дыхание', url: 'https://x/api/m/9/original?e=1&s=2' }
+  await sendAudio(api, redis as never, d)
+  await sendAudio(api, redis as never, d)
+  assert.deepEqual(sent, [d.url, 'FILE1'])
+})

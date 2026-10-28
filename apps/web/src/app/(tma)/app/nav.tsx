@@ -8,6 +8,10 @@ export type Screen =
   | { name: 'section'; id: AgeSectionId }
   | { name: 'material'; id: number; section?: AgeSectionId }
   | { name: 'bookmarks' }
+  | { name: 'calm' }
+  | { name: 'match' }
+  | { name: 'music' }
+  | { name: 'useful' }
   | { name: 'settings' }
   | { name: 'consents' }
 

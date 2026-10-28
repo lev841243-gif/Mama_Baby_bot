@@ -1,0 +1,121 @@
+import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
+
+export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
+  await db.execute(sql`
+   ALTER TABLE "payload"."texts" ADD COLUMN "calm_mom_button" varchar DEFAULT 'Спокойная мама';
+  ALTER TABLE "payload"."texts" ADD COLUMN "calm_mom_title" varchar DEFAULT 'Спокойная мама';
+  ALTER TABLE "payload"."texts" ADD COLUMN "calm_mom_intro" varchar DEFAULT 'Телесные и психологические практики для вас. Несколько минут — и чуть спокойнее.';
+  ALTER TABLE "payload"."texts" ADD COLUMN "tab_body" varchar DEFAULT 'Телесные';
+  ALTER TABLE "payload"."texts" ADD COLUMN "tab_psy" varchar DEFAULT 'Психологические';
+  ALTER TABLE "payload"."texts" ADD COLUMN "calm_empty" varchar DEFAULT 'Практики скоро появятся.';
+  ALTER TABLE "payload"."texts" ADD COLUMN "practice_done" varchar DEFAULT 'Выполнено';
+  ALTER TABLE "payload"."texts" ADD COLUMN "practice_done_marked" varchar DEFAULT 'Отмечено ✓';
+  ALTER TABLE "payload"."texts" ADD COLUMN "audio_send_to_chat" varchar DEFAULT 'Прислать в чат';
+  ALTER TABLE "payload"."texts" ADD COLUMN "audio_sent" varchar DEFAULT 'Отправили в чат с ботом: там аудио играет и при выключенном экране.';
+  ALTER TABLE "payload"."texts" ADD COLUMN "audio_send_error" varchar DEFAULT 'Не получилось отправить. Попробуйте ещё раз.';
+  ALTER TABLE "payload"."texts" ADD COLUMN "audio_speed" varchar DEFAULT 'Скорость';
+  ALTER TABLE "payload"."texts" ADD COLUMN "match_button" varchar DEFAULT 'Что уже умеет малыш?';
+  ALTER TABLE "payload"."texts" ADD COLUMN "match_title" varchar DEFAULT 'Что уже умеет малыш?';
+  ALTER TABLE "payload"."texts" ADD COLUMN "match_intro" varchar DEFAULT 'Отметьте, что малыш уже умеет, — подберём упражнения. Отметки нигде не сохраняются.';
+  ALTER TABLE "payload"."texts" ADD COLUMN "match_show" varchar DEFAULT 'Подобрать упражнения';
+  ALTER TABLE "payload"."texts" ADD COLUMN "match_result" varchar DEFAULT 'Можно попробовать';
+  ALTER TABLE "payload"."texts" ADD COLUMN "match_empty" varchar DEFAULT 'Подходящих упражнений пока нет. Вот упражнения по возрасту:';
+  ALTER TABLE "payload"."texts" ADD COLUMN "music_button" varchar DEFAULT 'Потешки и музыка';
+  ALTER TABLE "payload"."texts" ADD COLUMN "music_title" varchar DEFAULT 'Потешки и музыка';
+  ALTER TABLE "payload"."texts" ADD COLUMN "music_note" varchar DEFAULT 'Музыка открывается в Яндекс Музыке. Прослушивание — по правилам Яндекса.';
+  ALTER TABLE "payload"."texts" ADD COLUMN "music_open" varchar DEFAULT 'Слушать в Яндекс Музыке';
+  ALTER TABLE "payload"."texts" ADD COLUMN "music_empty" varchar DEFAULT 'Плейлисты скоро появятся.';
+  ALTER TABLE "payload"."texts" ADD COLUMN "useful_button" varchar DEFAULT 'Полезное';
+  ALTER TABLE "payload"."texts" ADD COLUMN "useful_title" varchar DEFAULT 'Полезное';
+  ALTER TABLE "payload"."texts" ADD COLUMN "useful_note" varchar DEFAULT 'Ссылки ведут на сайты автора и партнёров. Условия покупки на них определяют их владельцы.';
+  ALTER TABLE "payload"."texts" ADD COLUMN "useful_empty" varchar DEFAULT 'Ссылки скоро появятся.';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_calm_mom_button" varchar DEFAULT 'Спокойная мама';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_calm_mom_title" varchar DEFAULT 'Спокойная мама';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_calm_mom_intro" varchar DEFAULT 'Телесные и психологические практики для вас. Несколько минут — и чуть спокойнее.';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_tab_body" varchar DEFAULT 'Телесные';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_tab_psy" varchar DEFAULT 'Психологические';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_calm_empty" varchar DEFAULT 'Практики скоро появятся.';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_practice_done" varchar DEFAULT 'Выполнено';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_practice_done_marked" varchar DEFAULT 'Отмечено ✓';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_audio_send_to_chat" varchar DEFAULT 'Прислать в чат';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_audio_sent" varchar DEFAULT 'Отправили в чат с ботом: там аудио играет и при выключенном экране.';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_audio_send_error" varchar DEFAULT 'Не получилось отправить. Попробуйте ещё раз.';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_audio_speed" varchar DEFAULT 'Скорость';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_match_button" varchar DEFAULT 'Что уже умеет малыш?';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_match_title" varchar DEFAULT 'Что уже умеет малыш?';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_match_intro" varchar DEFAULT 'Отметьте, что малыш уже умеет, — подберём упражнения. Отметки нигде не сохраняются.';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_match_show" varchar DEFAULT 'Подобрать упражнения';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_match_result" varchar DEFAULT 'Можно попробовать';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_match_empty" varchar DEFAULT 'Подходящих упражнений пока нет. Вот упражнения по возрасту:';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_music_button" varchar DEFAULT 'Потешки и музыка';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_music_title" varchar DEFAULT 'Потешки и музыка';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_music_note" varchar DEFAULT 'Музыка открывается в Яндекс Музыке. Прослушивание — по правилам Яндекса.';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_music_open" varchar DEFAULT 'Слушать в Яндекс Музыке';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_music_empty" varchar DEFAULT 'Плейлисты скоро появятся.';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_useful_button" varchar DEFAULT 'Полезное';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_useful_title" varchar DEFAULT 'Полезное';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_useful_note" varchar DEFAULT 'Ссылки ведут на сайты автора и партнёров. Условия покупки на них определяют их владельцы.';
+  ALTER TABLE "payload"."_texts_v" ADD COLUMN "version_useful_empty" varchar DEFAULT 'Ссылки скоро появятся.';
+  ALTER TABLE "payload"."settings" ADD COLUMN "music_widget" boolean DEFAULT false;
+  ALTER TABLE "payload"."_settings_v" ADD COLUMN "version_music_widget" boolean DEFAULT false;`)
+}
+
+export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
+  await db.execute(sql`
+   ALTER TABLE "payload"."texts" DROP COLUMN "calm_mom_button";
+  ALTER TABLE "payload"."texts" DROP COLUMN "calm_mom_title";
+  ALTER TABLE "payload"."texts" DROP COLUMN "calm_mom_intro";
+  ALTER TABLE "payload"."texts" DROP COLUMN "tab_body";
+  ALTER TABLE "payload"."texts" DROP COLUMN "tab_psy";
+  ALTER TABLE "payload"."texts" DROP COLUMN "calm_empty";
+  ALTER TABLE "payload"."texts" DROP COLUMN "practice_done";
+  ALTER TABLE "payload"."texts" DROP COLUMN "practice_done_marked";
+  ALTER TABLE "payload"."texts" DROP COLUMN "audio_send_to_chat";
+  ALTER TABLE "payload"."texts" DROP COLUMN "audio_sent";
+  ALTER TABLE "payload"."texts" DROP COLUMN "audio_send_error";
+  ALTER TABLE "payload"."texts" DROP COLUMN "audio_speed";
+  ALTER TABLE "payload"."texts" DROP COLUMN "match_button";
+  ALTER TABLE "payload"."texts" DROP COLUMN "match_title";
+  ALTER TABLE "payload"."texts" DROP COLUMN "match_intro";
+  ALTER TABLE "payload"."texts" DROP COLUMN "match_show";
+  ALTER TABLE "payload"."texts" DROP COLUMN "match_result";
+  ALTER TABLE "payload"."texts" DROP COLUMN "match_empty";
+  ALTER TABLE "payload"."texts" DROP COLUMN "music_button";
+  ALTER TABLE "payload"."texts" DROP COLUMN "music_title";
+  ALTER TABLE "payload"."texts" DROP COLUMN "music_note";
+  ALTER TABLE "payload"."texts" DROP COLUMN "music_open";
+  ALTER TABLE "payload"."texts" DROP COLUMN "music_empty";
+  ALTER TABLE "payload"."texts" DROP COLUMN "useful_button";
+  ALTER TABLE "payload"."texts" DROP COLUMN "useful_title";
+  ALTER TABLE "payload"."texts" DROP COLUMN "useful_note";
+  ALTER TABLE "payload"."texts" DROP COLUMN "useful_empty";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_calm_mom_button";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_calm_mom_title";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_calm_mom_intro";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_tab_body";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_tab_psy";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_calm_empty";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_practice_done";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_practice_done_marked";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_audio_send_to_chat";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_audio_sent";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_audio_send_error";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_audio_speed";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_match_button";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_match_title";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_match_intro";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_match_show";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_match_result";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_match_empty";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_music_button";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_music_title";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_music_note";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_music_open";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_music_empty";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_useful_button";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_useful_title";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_useful_note";
+  ALTER TABLE "payload"."_texts_v" DROP COLUMN "version_useful_empty";
+  ALTER TABLE "payload"."settings" DROP COLUMN "music_widget";
+  ALTER TABLE "payload"."_settings_v" DROP COLUMN "version_music_widget";`)
+}

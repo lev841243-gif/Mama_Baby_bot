@@ -6,6 +6,7 @@ import { getDb } from '@mama/shared/db'
 import { Worker } from 'bullmq'
 import { Bot, GrammyError } from 'grammy'
 import { type AnnounceData, sendAnnounce } from './announce'
+import { type SendAudioData, sendAudio } from './audio'
 import { setupBot } from './bot'
 
 const log = createLogger('worker')
@@ -42,6 +43,9 @@ async function sendToUser(tgId: number, send: () => Promise<unknown>) {
   }
 }
 
+// Отдельное соединение под кеш file_id: соединение BullMQ занято блокирующими командами.
+const cache = createRedis()
+
 const worker = new Worker<BotJob['data'], void, BotJob['name']>(
   QUEUE_BOT,
   async (job) => {
@@ -58,6 +62,9 @@ const worker = new Worker<BotJob['data'], void, BotJob['name']>(
         break
       case 'test-announce':
         await sendAnnounce(bot.api, log, publicUrl, job.data as AnnounceData)
+        break
+      case 'send-audio':
+        await sendToUser(tgId, () => sendAudio(bot.api, cache, job.data as SendAudioData))
         break
     }
   },
@@ -98,7 +105,7 @@ async function configureBot() {
 
 async function shutdown(signal: string) {
   log.info({ signal }, 'shutting down')
-  await Promise.allSettled([bot.stop(), worker.close()])
+  await Promise.allSettled([bot.stop(), worker.close(), cache.quit()])
   await db.$client.end({ timeout: 5 })
   process.exit(0)
 }

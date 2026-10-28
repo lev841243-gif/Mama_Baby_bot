@@ -62,6 +62,13 @@ export const Settings: GlobalConfig = {
           defaultValue: d.smallSectionMin,
         },
         {
+          name: 'musicWidget',
+          label: 'Встраивать виджет Яндекс Музыки (Р24)',
+          type: 'checkbox',
+          defaultValue: d.musicWidget,
+          admin: { description: 'Только после проверки на iPhone и Android. Выключено — кнопка «Слушать в Яндекс Музыке».' },
+        },
+        {
           name: 'feedPerWeek',
           label: 'Лента: раз в неделю (этап 2)',
           type: 'number',

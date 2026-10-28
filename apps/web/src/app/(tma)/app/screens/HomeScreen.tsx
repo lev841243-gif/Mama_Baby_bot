@@ -29,6 +29,12 @@ export function HomeScreen() {
         </Section>
       )}
 
+      <div className="px-4 pt-3">
+        <Button size="l" stretched onClick={() => nav.push({ name: 'match' })}>
+          {t.matchButton}
+        </Button>
+      </div>
+
       <Section header={t.homeSections}>
         {visible.length === 0 && <Cell multiline>{t.homeEmpty}</Cell>}
         {visible.map((s) => (
@@ -50,6 +56,12 @@ export function HomeScreen() {
           ))}
         </Section>
       )}
+
+      <Section>
+        <Cell onClick={() => nav.push({ name: 'calm' })}>{t.calmMomButton}</Cell>
+        <Cell onClick={() => nav.push({ name: 'music' })}>{t.musicButton}</Cell>
+        <Cell onClick={() => nav.push({ name: 'useful' })}>{t.usefulButton}</Cell>
+      </Section>
 
       <div className="flex flex-wrap gap-2 px-4">
         <Button mode="bezeled" size="s" onClick={() => nav.push({ name: 'bookmarks' })}>

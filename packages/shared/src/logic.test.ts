@@ -76,3 +76,22 @@ test('материал «4–9» попадает в разделы «3–6» и
   assert.deepEqual(sectionsForRange(3, 18), ['3-6', '6-9', '9-12', '12-18'])
   assert.deepEqual(sectionsForRange(0, 3), [])
 })
+
+test('подбор: «нужно уметь» отмечено, «ведёт к» ещё нет (ТЗ 8.3)', async () => {
+  const { matchExercises } = await import('./content')
+  const items = [
+    { id: 1, leads: [10], requires: [] }, // переворот
+    { id: 2, leads: [20], requires: [10] }, // ползание после переворота
+    { id: 3, leads: [10], requires: [] },
+    { id: 4, leads: [], requires: [] }, // без навыков — в подбор не попадает
+  ]
+  assert.deepEqual(matchExercises(items, new Set()).map((e) => e.id), [1, 3])
+  assert.deepEqual(matchExercises(items, new Set([10])).map((e) => e.id), [2])
+  assert.deepEqual(matchExercises(items, new Set([10, 20])).map((e) => e.id), [])
+})
+
+test('ссылка Яндекс Музыки → виджет; неизвестный формат — только кнопка (Р24)', async () => {
+  const { yandexMusicEmbed } = await import('./content')
+  assert.equal(yandexMusicEmbed('https://music.yandex.ru/users/vera/playlists/1003'), 'https://music.yandex.ru/iframe/playlist/vera/1003')
+  assert.equal(yandexMusicEmbed('https://music.yandex.ru/album/123'), null)
+})
