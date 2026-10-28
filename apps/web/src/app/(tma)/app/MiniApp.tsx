@@ -28,6 +28,7 @@ import { MusicScreen } from './screens/MusicScreen'
 import { SearchScreen } from './screens/SearchScreen'
 import { SectionScreen } from './screens/SectionScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
+import { SubscriptionScreen } from './screens/SubscriptionScreen'
 import { UsefulScreen } from './screens/UsefulScreen'
 import { startParam, useBackButton } from './telegram'
 
@@ -259,6 +260,8 @@ function ScreenView({
       return <UsefulScreen />
     case 'search':
       return <SearchScreen />
+    case 'subscription':
+      return <SubscriptionScreen />
     case 'settings':
       return <SettingsScreen onDeleted={onDeleted} fontLarge={fontLarge} setFontLarge={setFontLarge} />
     case 'consents':

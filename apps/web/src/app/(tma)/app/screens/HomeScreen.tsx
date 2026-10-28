@@ -64,6 +64,7 @@ export function HomeScreen() {
         <Cell onClick={() => nav.push({ name: 'calm' })}>{t.calmMomButton}</Cell>
         <Cell onClick={() => nav.push({ name: 'music' })}>{t.musicButton}</Cell>
         <Cell onClick={() => nav.push({ name: 'useful' })}>{t.usefulButton}</Cell>
+        <Cell onClick={() => nav.push({ name: 'subscription' })}>{t.subscriptionButton}</Cell>
       </Section>
 
       <div className="flex flex-wrap gap-2 px-4">

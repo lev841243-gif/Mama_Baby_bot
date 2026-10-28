@@ -19,6 +19,7 @@ import {
   isValidBirth,
   listTopics,
   monthsLabel,
+  processPayment,
   setBotBlocked,
   searchMaterials,
   setChildBirth,
@@ -65,6 +66,35 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis }: Bo
       await ctx.reply(text, extra)
     }
   }
+
+  // 0. Оплата Telegram Stars (TODO(Р21): включается PAYMENT_PROVIDER=stars). У pre_checkout_query нет чата,
+  // поэтому до фильтра личных чатов. Платёж обрабатывается идемпотентно (приёмка 17).
+  bot.on('pre_checkout_query', async (ctx) => {
+    const q = ctx.preCheckoutQuery
+    const { subscription } = await getConfig(db)
+    const plan = subscription.plans.find((p) => `sub:${p.id}` === q.invoice_payload)
+    const ok = Boolean(plan && q.currency === 'XTR' && q.total_amount === plan.priceStars)
+    await ctx.answerPreCheckoutQuery(ok, ok ? undefined : { error_message: T.loadError })
+  })
+  bot.on('message:successful_payment', async (ctx) => {
+    const p = ctx.message.successful_payment
+    const { subscription } = await getConfig(db)
+    const plan = subscription.plans.find((x) => `sub:${x.id}` === p.invoice_payload)
+    if (!plan) {
+      log.error({ user: hashTgId(ctx.from.id) }, 'successful_payment with unknown plan')
+      return
+    }
+    const res = await processPayment(db, {
+      provider: 'stars',
+      providerPaymentId: p.telegram_payment_charge_id,
+      tgId: ctx.from.id,
+      plan,
+      amount: p.total_amount,
+      currency: p.currency,
+    })
+    log.info({ user: hashTgId(ctx.from.id), status: res.status }, 'stars payment processed')
+    if (res.endsAt) await ctx.reply(fmt(T.subscriptionPaid, { date: res.endsAt.toLocaleDateString('ru-RU') }), { reply_markup: openApp() })
+  })
 
   // 1. Только личные чаты. Посты канала — шаг 9 плана.
   bot.use(async (ctx, next) => {

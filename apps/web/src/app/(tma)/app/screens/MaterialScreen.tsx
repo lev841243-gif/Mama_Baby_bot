@@ -46,11 +46,14 @@ export function MaterialScreen({ id, section }: { id: number; section?: AgeSecti
   }
 
   if (d.status === 'locked') {
-    // Закрытый материал без подписки: только карточка и анонс (ТЗ 8.6). Экран «Подписка» — шаг 8.
+    // Закрытый материал без подписки: только карточка, анонс и путь к подписке (ТЗ 8.6).
     return (
       <div>
         <CardCell card={d.card} t={t} onClick={() => undefined} />
-        <Message text={`${t.lockedTitle}. ${t.lockedText}`} />
+        <Message
+          text={`${t.lockedTitle}. ${t.lockedText}`}
+          action={<Button onClick={() => nav.push({ name: 'subscription' })}>{t.subscriptionOpen}</Button>}
+        />
         {d.card.announce && <p className="whitespace-pre-line px-4">{d.card.announce}</p>}
         <Disclaimer text={t.medicalDisclaimer} />
       </div>

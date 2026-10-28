@@ -128,3 +128,44 @@ test('тексты из админки подменяют значения по 
   await getTexts(db)
   assert.equal(T.mainMenu, (before?.value as Record<string, string> | undefined)?.mainMenu || DEFAULT_TEXTS.mainMenu)
 })
+
+test('оплата идемпотентна: повтор того же платежа не продлевает дважды (приёмка 17)', { skip: !url }, async () => {
+  const { processPayment, getActiveSubscriptionUntil, getSubscription } = await import('./subscription')
+  await db.delete(users).where(eq(users.tgId, A))
+  await grantConsents(db, A, ['pd'], { isTester: true })
+  const plan = { id: 'month', title: '1 месяц', periodDays: 30, priceRub: 0, priceStars: 0 }
+  const now = new Date('2026-11-01T10:00:00Z')
+  const pay = { provider: 'test', providerPaymentId: `test-idem-${Date.now()}`, tgId: A, plan, amount: 0, currency: 'RUB' }
+  const first = await processPayment(db, pay, now)
+  const again = await processPayment(db, pay, now)
+  assert.equal(first.status, 'applied')
+  assert.equal(again.status, 'duplicate')
+  assert.equal(again.endsAt?.getTime(), first.endsAt?.getTime())
+  assert.equal((await db.select().from(payments).where(eq(payments.providerPaymentId, pay.providerPaymentId))).length, 1)
+  // Продление — от конца текущего срока.
+  const second = await processPayment(db, { ...pay, providerPaymentId: `${pay.providerPaymentId}-2` }, now)
+  assert.equal(second.endsAt!.getTime() - now.getTime(), 60 * 24 * 3600 * 1000)
+  assert.ok(await getActiveSubscriptionUntil(db, A, now))
+  // По окончании срока доступ закрывается сам (приёмка 18).
+  assert.equal(await getActiveSubscriptionUntil(db, A, new Date(now.getTime() + 61 * 24 * 3600 * 1000)), null)
+  assert.equal((await getSubscription(db, A, now))?.plan, 'month')
+  await db.delete(payments).where(eq(payments.providerPaymentId, pay.providerPaymentId))
+  await db.delete(payments).where(eq(payments.providerPaymentId, `${pay.providerPaymentId}-2`))
+})
+
+test('напоминание за 3 дня приходит один раз (приёмка 18)', { skip: !url }, async () => {
+  const { processPayment, dueReminders, markReminded } = await import('./subscription')
+  await db.delete(users).where(eq(users.tgId, B))
+  await grantConsents(db, B, ['pd'], { isTester: true })
+  const plan = { id: 'week', title: 'неделя', periodDays: 7, priceRub: 0, priceStars: 0 }
+  const now = new Date()
+  const id = `test-remind-${Date.now()}`
+  // Оплачено 5 дней назад на неделю — до конца 2 дня.
+  await processPayment(db, { provider: 'test', providerPaymentId: id, tgId: B, plan, amount: 0, currency: 'RUB' }, new Date(now.getTime() - 5 * 24 * 3600 * 1000))
+  const due = (await dueReminders(db, now)).filter((r) => r.tgId === B)
+  assert.equal(due.length, 1)
+  await markReminded(db, due[0]!.userId, now)
+  assert.equal((await dueReminders(db, now)).filter((r) => r.tgId === B).length, 0)
+  await db.delete(payments).where(eq(payments.providerPaymentId, id))
+  await db.delete(users).where(inArray(users.tgId, [A, B]))
+})

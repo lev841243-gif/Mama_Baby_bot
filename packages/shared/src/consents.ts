@@ -177,7 +177,3 @@ export async function revokeConsent(db: Db, tgId: number, type: ConsentType): Pr
   })
 }
 
-/** Есть ли у мамы оплаченная подписка — для предупреждения при отзыве (ТЗ 6.5). TODO(шаг 8). */
-export async function getActiveSubscriptionUntil(_db: Db, _tgId: number): Promise<Date | null> {
-  return null
-}

@@ -1,9 +1,21 @@
 // Процесс worker: бот grammY (long polling) + обработчики очередей BullMQ.
 import { autoRetry } from '@grammyjs/auto-retry'
 import { apiThrottler } from '@grammyjs/transformer-throttler'
-import { QUEUE_BOT, T, createLogger, createRedis, getConfig, hashTgId, setBotBlocked, type BotJob } from '@mama/shared'
+import {
+  QUEUE_BOT,
+  T,
+  createLogger,
+  createRedis,
+  dueReminders,
+  fmt,
+  getConfig,
+  hashTgId,
+  markReminded,
+  setBotBlocked,
+  type BotJob,
+} from '@mama/shared'
 import { getDb } from '@mama/shared/db'
-import { Worker } from 'bullmq'
+import { Queue, Worker } from 'bullmq'
 import { Bot, GrammyError } from 'grammy'
 import { type AnnounceData, sendAnnounce } from './announce'
 import { type SendAudioData, sendAudio } from './audio'
@@ -46,10 +58,20 @@ async function sendToUser(tgId: number, send: () => Promise<unknown>) {
 }
 
 
+/** Напоминание за 3 дня до конца подписки (ТЗ 8.6, шаблон 07 §7). Закрытие по сроку — само: доступ считается по дате. */
+async function remindSubscriptions() {
+  for (const r of await dueReminders(db)) {
+    const date = r.endsAt.toLocaleDateString('ru-RU')
+    await sendToUser(r.tgId, () => bot.api.sendMessage(r.tgId, fmt(T.subscriptionReminder, { date }), { reply_markup: mainMenu() }))
+    await markReminded(db, r.userId)
+  }
+}
+
 const worker = new Worker<BotJob['data'], void, BotJob['name']>(
   QUEUE_BOT,
   async (job) => {
-    const { tgId } = job.data
+    // У задачи расписания (subscriptions-tick) мамы нет.
+    const tgId = job.data.tgId ?? 0
     await getConfig(db)
     switch (job.name) {
       case 'consent-granted':
@@ -62,6 +84,15 @@ const worker = new Worker<BotJob['data'], void, BotJob['name']>(
         break
       case 'test-announce':
         await sendAnnounce(bot.api, log, publicUrl, job.data as AnnounceData)
+        break
+      case 'subscription-paid': {
+        const { endsAt } = job.data as Extract<BotJob, { name: 'subscription-paid' }>['data']
+        const date = new Date(endsAt).toLocaleDateString('ru-RU')
+        await sendToUser(tgId, () => bot.api.sendMessage(tgId, fmt(T.subscriptionPaid, { date }), { reply_markup: mainMenu() }))
+        break
+      }
+      case 'subscriptions-tick':
+        await remindSubscriptions()
         break
       case 'send-audio':
         await sendToUser(tgId, () => sendAudio(bot.api, cache, job.data as SendAudioData))
@@ -91,6 +122,10 @@ async function syncDescription() {
   appliedDescription = key
 }
 
+/** Повторяющиеся задачи: проверка подписок раз в час. Upsert не плодит дублей при перезапуске. */
+const scheduler = new Queue(QUEUE_BOT, { connection: createRedis() })
+await scheduler.upsertJobScheduler('subscriptions-tick', { every: 60 * 60 * 1000 }, { name: 'subscriptions-tick', data: {} })
+
 async function configureBot() {
   await bot.api.setMyCommands([
     { command: 'start', description: 'Начать' },
@@ -105,7 +140,7 @@ async function configureBot() {
 
 async function shutdown(signal: string) {
   log.info({ signal }, 'shutting down')
-  await Promise.allSettled([bot.stop(), worker.close(), cache.quit()])
+  await Promise.allSettled([bot.stop(), worker.close(), scheduler.close(), cache.quit()])
   await db.$client.end({ timeout: 5 })
   process.exit(0)
 }
@@ -115,6 +150,6 @@ process.once('SIGINT', () => void shutdown('SIGINT'))
 await configureBot()
 log.info({ publicUrl }, 'bot starting')
 await bot.start({
-  allowed_updates: ['message', 'callback_query', 'my_chat_member'],
+  allowed_updates: ['message', 'callback_query', 'my_chat_member', 'pre_checkout_query'],
   onStart: (me) => log.info({ bot: me.username }, 'bot started'),
 })

@@ -71,12 +71,33 @@ export const payments = app.table('payments', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   userId: bigint('user_id', { mode: 'number' }).references(() => users.id, { onDelete: 'set null' }),
   provider: text('provider').notNull(),
+  // Уникальность — защита от двойной обработки одного платежа (ТЗ 8.6, приёмка 17).
   providerPaymentId: text('provider_payment_id').notNull().unique(),
   amount: integer('amount').notNull(),
   currency: text('currency').notNull(),
   status: text('status').notNull(),
+  plan: text('plan'),
+  periodDays: integer('period_days'),
   createdAt: createdAt(),
 })
+
+/** Подписка мамы (ТЗ 8.6, 11.1): тариф и срок. Одна строка на маму; продление сдвигает срок. */
+export const subscriptions = app.table(
+  'subscriptions',
+  {
+    userId: bigint('user_id', { mode: 'number' })
+      .primaryKey()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    plan: text('plan').notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    lastPaymentId: text('last_payment_id').notNull(),
+    // Напоминание за 3 дня отправлено для этого срока (сбрасывается при продлении).
+    remindedAt: timestamp('reminded_at', { withTimezone: true }),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('subscriptions_ends_at_idx').on(t.endsAt)],
+)
 
 /** Отправленные лентой материалы (этап 2): материал не уходит одной маме дважды (ТЗ 7). */
 export const feedSent = app.table(

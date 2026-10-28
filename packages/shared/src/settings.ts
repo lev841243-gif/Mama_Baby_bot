@@ -3,6 +3,7 @@ import type { Db } from './db/client'
 import { appSettings } from './db/schema'
 import { DEFAULT_CONSENT_VERSIONS, type ConsentVersions } from './consent-types'
 import { DEFAULT_EMERGENCY_TEXT, DEFAULT_RED_WORDS, type RedWordsConfig } from './red-words'
+import { DEFAULT_SUBSCRIPTION, type SubscriptionConfig } from './subscription'
 import { DEFAULT_TEXTS, type TextKey } from './texts'
 
 /**
@@ -36,11 +37,12 @@ export type SharedConfig = {
   texts: Texts
   redWords: RedWordsConfig
   consentVersions: ConsentVersions
+  subscription: SubscriptionConfig
 }
 
 /** Ключи app_settings, которые пишет админка. */
 export const SETTINGS_KEYS = ['closedMode', 'betaBanner', 'testerPhase', 'feedPerWeek', 'hideSmallSections', 'smallSectionMin', 'musicWidget'] as const
-export const CONFIG_KEYS = { texts: 'texts', redWords: 'redWords', consentVersions: 'consentVersions' } as const
+export const CONFIG_KEYS = { texts: 'texts', redWords: 'redWords', consentVersions: 'consentVersions', subscription: 'subscription' } as const
 
 const flag = (name: string, fallback: boolean) => {
   const v = process.env[name]?.trim().toLowerCase()
@@ -94,6 +96,15 @@ function mergeRedWords(stored: unknown): RedWordsConfig {
   }
 }
 
+function mergeSubscription(stored: unknown): SubscriptionConfig {
+  const s = (stored ?? {}) as Partial<SubscriptionConfig>
+  const plans = Array.isArray(s.plans) ? s.plans.filter((p) => p && p.id && p.periodDays > 0) : []
+  return {
+    description: typeof s.description === 'string' && s.description.trim() ? s.description : DEFAULT_SUBSCRIPTION.description,
+    plans: plans.length ? plans : DEFAULT_SUBSCRIPTION.plans,
+  }
+}
+
 export async function getConfig(db: Db): Promise<SharedConfig> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.value
   const rows = await db.select().from(appSettings)
@@ -111,6 +122,7 @@ export async function getConfig(db: Db): Promise<SharedConfig> {
     texts,
     redWords: mergeRedWords(byKey.get(CONFIG_KEYS.redWords)),
     consentVersions: { ...DEFAULT_CONSENT_VERSIONS, ...(versions ?? {}) },
+    subscription: mergeSubscription(byKey.get(CONFIG_KEYS.subscription)),
   }
   cache = { at: Date.now(), value }
   return value

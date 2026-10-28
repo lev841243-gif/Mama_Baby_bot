@@ -44,3 +44,11 @@ export type SearchPayload =
   | { status: 'nothing'; topics: string[] }
   | { status: 'emergency'; text: string }
   | { status: 'limit' }
+
+export type SubscriptionPayload = {
+  description: string
+  plans: { id: string; title: string; priceRub: number; priceStars: number }[]
+  status: { active: boolean; endsAt: string } | null
+  /** Способ оплаты; null — оплата пока выключена (Р21). */
+  provider: 'test' | 'stars' | null
+}

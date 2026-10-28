@@ -1,10 +1,10 @@
 'use client'
 import { birthYearOptions, isValidBirth } from '@mama/shared/age'
-import { MONTHS_RU } from '@mama/shared/texts'
+import { MONTHS_RU, fmt } from '@mama/shared/texts'
 import { Button, Cell, List, Section, Switch } from '@telegram-apps/telegram-ui'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import type { Birth, HomePayload } from '@/lib/tma-types'
+import type { Birth, HomePayload, SubscriptionPayload } from '@/lib/tma-types'
 import { api } from '../api'
 import { Confirm } from '../Confirm'
 import { useApp } from '../nav'
@@ -14,6 +14,13 @@ export function SettingsScreen({ onDeleted, fontLarge, setFontLarge }: { onDelet
   const { nav, initData, session } = useApp()
   const t = session.texts
   const [confirming, setConfirming] = useState(false)
+  // При оплаченной подписке — предупреждение, что доступ прекратится (ТЗ 6.5).
+  const sub = useQuery({
+    queryKey: ['subscription'],
+    queryFn: () => api<SubscriptionPayload>('/api/tma/subscription', initData),
+    enabled: confirming,
+  })
+  const paidUntil = sub.data?.status?.active ? new Date(sub.data.status.endsAt).toLocaleDateString('ru-RU') : null
   const revokeAll = useMutation({
     mutationFn: () => api<{ status: 'deleted' }>('/api/tma/revoke', initData),
     onSuccess: onDeleted,
@@ -25,6 +32,7 @@ export function SettingsScreen({ onDeleted, fontLarge, setFontLarge }: { onDelet
       <AgeSection />
       <Section>
         <Cell onClick={() => nav.push({ name: 'bookmarks' })}>{t.bookmarksTitle}</Cell>
+        <Cell onClick={() => nav.push({ name: 'subscription' })}>{t.subscriptionButton}</Cell>
         <Cell Component="label" after={<Switch checked={fontLarge} onChange={(e) => setFontLarge(e.target.checked)} />}>
           {t.fontBigger}
         </Cell>
@@ -38,6 +46,7 @@ export function SettingsScreen({ onDeleted, fontLarge, setFontLarge }: { onDelet
       {confirming && (
         <Confirm
           text={t.revokeConfirm}
+          note={paidUntil ? fmt(t.revokeSubscription, { date: paidUntil, siteUrl: window.location.origin }).replace(/<[^>]+>/g, '') : undefined}
           okText={t.revokeYes}
           cancelText={t.revokeNo}
           loading={revokeAll.isPending}

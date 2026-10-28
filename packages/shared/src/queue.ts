@@ -10,6 +10,10 @@ export type BotJob =
   | { name: 'data-deleted'; data: { tgId: number } }
   /** «Прислать в чат» (ТЗ 8.4): аудио играет как обычное аудио Telegram, в том числе в фоне. Доступ проверен в web. */
   | { name: 'send-audio'; data: { tgId: number; mediaId: number; title: string; url: string } }
+  /** Оплата подтверждена — сообщение в чат (ТЗ 8.6). */
+  | { name: 'subscription-paid'; data: { tgId: number; endsAt: string } }
+  /** Раз в час: напоминания за 3 дня до конца подписки (ТЗ 8.6, приёмка 18). */
+  | { name: 'subscriptions-tick'; data: { tgId?: undefined } }
   /** Тестовая отправка анонса автору себе в бот (ТЗ 9.4). */
   | { name: 'test-announce'; data: { tgId: number; materialId: number; title: string; announce: string; photoUrl?: string } }
 

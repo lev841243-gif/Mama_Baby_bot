@@ -30,6 +30,7 @@ import { UsefulLinks } from './collections/UsefulLinks'
 import { Users } from './collections/Users'
 import { RedWords } from './globals/RedWords'
 import { Settings } from './globals/Settings'
+import { Subscription } from './globals/Subscription'
 import { Texts } from './globals/Texts'
 import { s3Config } from './lib/media-config'
 import { importDocxEndpoint } from './payload/endpoints/import-docx'
@@ -66,7 +67,7 @@ export default buildConfig({
     Users,
     AuditLog,
   ],
-  globals: [Texts, RedWords, Settings],
+  globals: [Texts, RedWords, Subscription, Settings],
   // Один формат разметки (ТЗ 9.5): жирный, курсив, ссылки, списки, подзаголовки, картинки. Без таблиц и цвета.
   editor: lexicalEditor({
     features: () => [

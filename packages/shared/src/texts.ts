@@ -159,6 +159,20 @@ export const DEFAULT_TEXTS = {
   searchWantPick: 'Какая тема ближе? Автор увидит только тему, без вашего запроса.',
   searchWantThanks: 'Спасибо! Автор увидит, что эту тему ищут.',
   searchLimit: 'Сегодня вы уже много искали. Попробуйте завтра или загляните в разделы приложения.',
+
+  // Подписка (ТЗ 8.6, шаблон 07 §7)
+  subscriptionButton: 'Подписка',
+  subscriptionTitle: 'Подписка',
+  subscriptionPlan: 'Подписка на {period} — {price}',
+  subscriptionPay: 'Оплатить',
+  subscriptionOffer: 'Нажимая «Оплатить», вы принимаете <a href="{siteUrl}/oferta">условия оферты</a>.',
+  subscriptionActive: 'Подписка действует до {date}.',
+  subscriptionNone: 'Подписки пока нет.',
+  subscriptionTestMode: 'Тестовый режим: деньги не списываются.',
+  subscriptionDisabled: 'Оплата пока не подключена.',
+  subscriptionPaid: 'Подписка оформлена до {date}. Закрытые материалы открыты.',
+  subscriptionReminder: 'Подписка заканчивается {date}. Продлить можно в разделе «Подписка».',
+  subscriptionOpen: 'Оформить подписку',
 } as const
 
 export type TextKey = keyof typeof DEFAULT_TEXTS
@@ -334,6 +348,23 @@ export const TEXT_GROUPS: { label: string; texts: Partial<Record<TextKey, string
       searchLimit: 'Лимит 30 запросов в день',
     },
   },
+  {
+    label: 'Подписка',
+    texts: {
+      subscriptionButton: 'Кнопка «Подписка»',
+      subscriptionTitle: 'Подписка: заголовок',
+      subscriptionPlan: 'Тариф ({period}, {price})',
+      subscriptionPay: 'Кнопка «Оплатить»',
+      subscriptionOffer: 'Принятие оферты ({siteUrl})',
+      subscriptionActive: 'Подписка действует ({date})',
+      subscriptionNone: 'Подписки нет',
+      subscriptionTestMode: 'Тестовый режим оплаты',
+      subscriptionDisabled: 'Оплата не подключена',
+      subscriptionPaid: 'После оплаты, в чат ({date})',
+      subscriptionReminder: 'Напоминание за 3 дня ({date})',
+      subscriptionOpen: 'Кнопка на закрытом материале',
+    },
+  },
 ]
 
 export const TEXT_LABELS = Object.assign({}, ...TEXT_GROUPS.map((g) => g.texts)) as Record<TextKey, string>
@@ -374,6 +405,7 @@ export const CLIENT_TEXT_KEYS = [
   'myConsentsButton',
   'appRevokeAll',
   'revokeConfirm',
+  'revokeSubscription',
   'revokeYes',
   'revokeNo',
   'consentRevokeItem',
@@ -386,6 +418,7 @@ export const CLIENT_TEXT_KEYS = [
   ...(Object.keys(TEXT_GROUPS.find((g) => g.label === 'Приложение: материалы')!.texts) as TextKey[]),
   ...(Object.keys(TEXT_GROUPS.find((g) => g.label === 'Приложение: практики, подбор, музыка')!.texts) as TextKey[]),
   ...(Object.keys(TEXT_GROUPS.find((g) => g.label === 'Поиск')!.texts) as TextKey[]),
+  ...(Object.keys(TEXT_GROUPS.find((g) => g.label === 'Подписка')!.texts) as TextKey[]),
   ...(Object.keys(TEXT_GROUPS.find((g) => g.label === 'Поиск')!.texts) as TextKey[]),
 ] as const satisfies readonly TextKey[]
 
