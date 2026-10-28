@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { compareVersions, isConsentVersionValid } from './consents'
+import { compareVersions, isConsentVersionValid, visibleConsentItems } from './consents'
 import { ageInMonths, ageSection, isValidBirth } from './profile'
 import { monthsLabel } from './texts'
 
@@ -154,4 +154,14 @@ test('сборка статьи из блоков без ИИ: в теле не�
   const edited = checkAgainstSources('Купание, тёплая колыбельная и тишина.', [post])
   assert.equal(edited[0]!.clean, false)
   assert.ok(edited[0]!.segments.some((s) => !s.fromSource && s.text.includes('тёплая')))
+})
+
+test('окно согласий: только работающие функции, Р27 убирает календарь и рекламу из «Принять всё» (ТЗ 8.9)', () => {
+  const off = { calendarEnabled: false, authorNews: false, acceptAllSkipsOptional: false }
+  assert.deepEqual(visibleConsentItems(off).map((i) => i.type), ['pd', 'feed'])
+  const on = visibleConsentItems({ calendarEnabled: true, authorNews: true, acceptAllSkipsOptional: true })
+  assert.deepEqual(on.map((i) => i.type), ['pd', 'feed', 'calendar', 'ads'])
+  assert.deepEqual(on.filter((i) => i.inAcceptAll).map((i) => i.type), ['pd', 'feed'])
+  const all = visibleConsentItems({ calendarEnabled: true, authorNews: false, acceptAllSkipsOptional: false })
+  assert.ok(all.every((i) => i.inAcceptAll))
 })

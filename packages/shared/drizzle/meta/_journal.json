@@ -36,6 +36,13 @@
       "when": 1793162771095,
       "tag": "0004_step10_summary_calendar",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793169560662,
+      "tag": "0005_step2_feed_settings",
+      "breakpoints": true
     }
   ]
 }

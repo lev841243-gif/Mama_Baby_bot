@@ -99,6 +99,32 @@ export const subscriptions = app.table(
   (t) => [index('subscriptions_ends_at_idx').on(t.endsAt)],
 )
 
+/** Время ленты (ТЗ 7): утро 9–11, день 13–15, вечер 19–21 по времени мамы. */
+export const feedSlot = app.enum('feed_slot', ['morning', 'day', 'evening'])
+
+/**
+ * Настройки ленты (ТЗ 7, 11.1). Строка есть, пока действует согласие на ленту: отписка её удаляет.
+ * Лента включена = согласие на ленту + строка + нет паузы + бот не заблокирован.
+ */
+export const feedSettings = app.table(
+  'feed_settings',
+  {
+    userId: bigint('user_id', { mode: 'number' })
+      .primaryKey()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    slot: feedSlot('slot').notNull(),
+    // Пояс IANA из списка поясов РФ; по умолчанию московский (ТЗ 7).
+    timezone: text('timezone').notNull().default('Europe/Moscow'),
+    pausedUntil: timestamp('paused_until', { withTimezone: true }),
+    // Предупреждение «лента возобновится завтра» для текущей паузы уже отправлено.
+    resumeWarnedAt: timestamp('resume_warned_at', { withTimezone: true }),
+    // Прощальное сообщение в 18 месяцев отправлено — лента молчит (ТЗ 5, приёмка 27).
+    farewellAt: timestamp('farewell_at', { withTimezone: true }),
+    lastSentAt: timestamp('last_sent_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+)
+
 /** Отправленные лентой материалы (этап 2): материал не уходит одной маме дважды (ТЗ 7). */
 export const feedSent = app.table(
   'feed_sent',
@@ -176,7 +202,7 @@ export const statDaily = app.table(
 )
 
 /**
- * Календарь навыков (ТЗ 10.4) — только модель данных этапа 1, записи не собираются до решения юриста (Р23).
+ * Календарь навыков (ТЗ 10.4). Записи пишутся только с согласием на календарь; у мам — после решения юриста (Р23).
  * Навык — id из справочника Payload; без текста и голоса: только дата, навык, статус.
  */
 export const calendarStatus = app.enum('calendar_status', ['start', 'formed'])
@@ -192,6 +218,7 @@ export const skillCalendar = app.table(
     day: date('day', { mode: 'string' }).notNull(),
     status: calendarStatus('status').notNull(),
     createdAt: createdAt(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('skill_calendar_user_idx').on(t.userId, t.skillId)],
 )

@@ -5,7 +5,7 @@ export type SessionPayload = {
   status: 'ready' | 'needConsent'
   beta: boolean
   consent: {
-    items: { type: ConsentType; required: boolean; title: string; hint: string; docPath: string }[]
+    items: { type: ConsentType; required: boolean; title: string; hint: string; docPath: string; inAcceptAll: boolean }[]
     granted: ConsentType[]
   }
   texts: Record<ClientTextKey, string>

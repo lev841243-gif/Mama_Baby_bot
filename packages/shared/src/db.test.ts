@@ -5,7 +5,7 @@ import { after, before, test } from 'node:test'
 import { eq, inArray } from 'drizzle-orm'
 import { deleteUserData, getConsentState, grantConsents, revokeConsent } from './consents'
 import { createDb, type Db } from './db/client'
-import { consents, feedSent, payments, users } from './db/schema'
+import { consents, feedSent, feedSettings, payments, users } from './db/schema'
 import { getChildBirth, setChildBirth } from './profile'
 
 const url = process.env.TEST_DATABASE_URL
@@ -50,7 +50,9 @@ test('«Принять всё» пишет только показанные п�
 test('снятие галочки ленты отзывает только ленту и чистит её данные', { skip: !url }, async () => {
   const { userId } = await getConsentState(db, A)
   await db.insert(feedSent).values({ userId: userId!, materialId: 1 })
+  await db.insert(feedSettings).values({ userId: userId!, slot: 'morning' })
   assert.equal(await revokeConsent(db, A, 'feed'), 'revoked')
+  assert.equal((await db.select().from(feedSettings).where(eq(feedSettings.userId, userId!))).length, 0)
   const state = await getConsentState(db, A)
   assert.equal(state.pdValid, true)
   assert.equal(state.granted.feed, undefined)

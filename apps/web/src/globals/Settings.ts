@@ -78,5 +78,35 @@ export const Settings: GlobalConfig = {
         },
       ],
     },
+    {
+      type: 'collapsible',
+      label: 'Календарь, новости автора, окно согласий (этап 2)',
+      fields: [
+        {
+          name: 'calendarEnabled',
+          label: 'Календарь навыков работает',
+          type: 'checkbox',
+          defaultValue: d.calendarEnabled,
+          admin: {
+            description:
+              'Пункт «Календарь навыков» в окне согласий, «Записать навык» в боте, экран календаря. Для мам — только после решения юриста (Р23).',
+          },
+        },
+        {
+          name: 'authorNews',
+          label: 'Новости автора (Р6)',
+          type: 'checkbox',
+          defaultValue: d.authorNews,
+          admin: { description: 'Пункт «Новости автора» в окне согласий и разовые рассылки. Нужно согласие юриста.' },
+        },
+        {
+          name: 'acceptAllSkipsOptional',
+          label: 'Календарь и новости автора — не через «Принять всё» (Р27)',
+          type: 'checkbox',
+          defaultValue: d.acceptAllSkipsOptional,
+          admin: { description: 'Если юрист скажет, что эти согласия даются только своей галочкой.' },
+        },
+      ],
+    },
   ],
 }

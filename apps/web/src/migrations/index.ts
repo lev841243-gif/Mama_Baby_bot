@@ -8,6 +8,7 @@ import * as migration_20261028_010517_step7_search from './20261028_010517_step7
 import * as migration_20261028_010520_step7_drop_search_soon from './20261028_010520_step7_drop_search_soon';
 import * as migration_20261028_011106_step8_subscription from './20261028_011106_step8_subscription';
 import * as migration_20261028_011917_step9_channel from './20261028_011917_step9_channel';
+import * as migration_20261028_063943_step2_settings from './20261028_063943_step2_settings';
 
 export const migrations = [
   {
@@ -58,6 +59,11 @@ export const migrations = [
   {
     up: migration_20261028_011917_step9_channel.up,
     down: migration_20261028_011917_step9_channel.down,
-    name: '20261028_011917_step9_channel'
+    name: '20261028_011917_step9_channel',
+  },
+  {
+    up: migration_20261028_063943_step2_settings.up,
+    down: migration_20261028_063943_step2_settings.down,
+    name: '20261028_063943_step2_settings'
   },
 ];

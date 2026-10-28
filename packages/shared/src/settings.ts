@@ -27,6 +27,15 @@ export type AppSettings = {
   smallSectionMin: number
   /** Р24: встраивать виджет Яндекс Музыки (после проверки на iPhone и Android), иначе только кнопка-ссылка. */
   musicWidget: boolean
+  /**
+   * Календарь навыков работает (этап 2): пункт в окне согласий, «Записать навык», экран в приложении.
+   * Включать для мам только после решения юриста (Р23).
+   */
+  calendarEnabled: boolean
+  /** Р6: «Новости автора» — пункт в окне согласий и разовые рассылки. */
+  authorNews: boolean
+  /** Р27: календарь и новости автора не входят в «Принять всё», только своей галочкой. */
+  acceptAllSkipsOptional: boolean
 }
 
 export type Texts = Record<TextKey, string>
@@ -41,7 +50,18 @@ export type SharedConfig = {
 }
 
 /** Ключи app_settings, которые пишет админка. */
-export const SETTINGS_KEYS = ['closedMode', 'betaBanner', 'testerPhase', 'feedPerWeek', 'hideSmallSections', 'smallSectionMin', 'musicWidget'] as const
+export const SETTINGS_KEYS = [
+  'closedMode',
+  'betaBanner',
+  'testerPhase',
+  'feedPerWeek',
+  'hideSmallSections',
+  'smallSectionMin',
+  'musicWidget',
+  'calendarEnabled',
+  'authorNews',
+  'acceptAllSkipsOptional',
+] as const
 export const CONFIG_KEYS = { texts: 'texts', redWords: 'redWords', consentVersions: 'consentVersions', subscription: 'subscription' } as const
 
 const flag = (name: string, fallback: boolean) => {
@@ -62,6 +82,12 @@ export function defaultSettings(): AppSettings {
     smallSectionMin: 5,
     // TODO(Р24): включить после проверки виджета на телефонах.
     musicWidget: false,
+    // TODO(Р23): включить после решения юриста по календарю.
+    calendarEnabled: false,
+    // TODO(Р6): на старте разовые рассылки не делаем.
+    authorNews: false,
+    // TODO(Р27): решает юрист.
+    acceptAllSkipsOptional: false,
   }
 }
 

@@ -138,7 +138,13 @@ export function ConsentWindow({ session, initData, mode, onDeleted }: Props) {
 
       {!manage && (
         <div className="flex flex-col gap-2 px-4 pt-2 pb-4">
-          <Button size="l" stretched loading={grant.isPending} onClick={() => grant.mutate(items.map((i) => i.type))}>
+          <Button
+            size="l"
+            stretched
+            loading={grant.isPending}
+            // Р27: пункты вне «Принять всё» принимаются, только если мама отметила их сама.
+            onClick={() => grant.mutate(items.filter((i) => i.inAcceptAll || checked.has(i.type)).map((i) => i.type))}
+          >
             {t.consentAcceptAll}
           </Button>
           <Button

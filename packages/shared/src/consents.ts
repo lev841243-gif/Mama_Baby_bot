@@ -1,9 +1,9 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db } from './db/client'
-import { consents, feedSent, skillCalendar, users } from './db/schema'
+import { consents, feedSent, feedSettings, skillCalendar, users } from './db/schema'
 import { bumpDaily } from './summary'
-import { getConsentVersions } from './settings'
+import { getConsentVersions, getSettings, type AppSettings } from './settings'
 import {
   CONSENT_TYPES,
   DEFAULT_CONSENT_VERSIONS,
@@ -23,12 +23,11 @@ export function isConsentVersionValid(
   return compareVersions(version, versions[type].required) >= 0
 }
 
-// В окне только работающие функции (ТЗ 8.9): календарь — с этапа 2, новости автора — только если Р6 «да».
-export const CONSENT_FEATURES: Record<ConsentType, boolean> = {
-  pd: true,
-  feed: true,
-  calendar: false,
-  ads: false,
+type FeatureSettings = Pick<AppSettings, 'calendarEnabled' | 'authorNews' | 'acceptAllSkipsOptional'>
+
+// В окне только работающие функции (ТЗ 8.9): календарь — с этапа 2 после Р23, новости автора — только если Р6 «да».
+export function consentFeatures(s: FeatureSettings): Record<ConsentType, boolean> {
+  return { pd: true, feed: true, calendar: s.calendarEnabled, ads: s.authorNews }
 }
 
 export type ConsentItem = {
@@ -38,6 +37,11 @@ export type ConsentItem = {
   hint: string
   /** Путь к тексту согласия на сайте проекта. */
   docPath: string
+}
+
+export type VisibleConsentItem = ConsentItem & {
+  /** Отмечается кнопкой «Принять всё» (Р27: календарь и реклама могут быть только своей галочкой). */
+  inAcceptAll: boolean
 }
 
 export const CONSENT_ITEMS: ConsentItem[] = [
@@ -71,8 +75,12 @@ export const CONSENT_ITEMS: ConsentItem[] = [
   },
 ]
 
-export function visibleConsentItems(): ConsentItem[] {
-  return CONSENT_ITEMS.filter((i) => CONSENT_FEATURES[i.type])
+export function visibleConsentItems(s: FeatureSettings): VisibleConsentItem[] {
+  const on = consentFeatures(s)
+  return CONSENT_ITEMS.filter((i) => on[i.type]).map((i) => ({
+    ...i,
+    inAcceptAll: !(s.acceptAllSkipsOptional && (i.type === 'calendar' || i.type === 'ads')),
+  }))
 }
 
 export type ConsentState = {
@@ -114,7 +122,7 @@ export async function grantConsents(
   types: ConsentType[],
   opts: { isTester: boolean },
 ): Promise<ConsentState> {
-  const visible = new Set(visibleConsentItems().map((i) => i.type))
+  const visible = new Set(visibleConsentItems(await getSettings(db)).map((i) => i.type))
   const wanted = [...new Set(types)].filter((t) => visible.has(t))
   if (!wanted.includes('pd')) throw new Error('pd consent required')
   const versions = await getConsentVersions(db)
@@ -172,8 +180,12 @@ export async function revokeConsent(db: Db, tgId: number, type: ConsentType): Pr
       .set({ revokedAt: new Date() })
       .where(and(eq(consents.userId, user.id), eq(consents.type, type), isNull(consents.revokedAt)))
       .returning({ id: consents.id })
-    // Данные, нужные только для этого согласия (ТЗ 11.1, 8.9): отправленное лентой, записи календаря.
-    if (type === 'feed') await tx.delete(feedSent).where(eq(feedSent.userId, user.id))
+    // TODO(Р10): журнал отзывов (тип, версия, дата — без ID), если юрист скажет, что он нужен.
+    // Данные, нужные только для этого согласия (ТЗ 11.1, 8.9): настройки и отправленное лентой, записи календаря.
+    if (type === 'feed') {
+      await tx.delete(feedSettings).where(eq(feedSettings.userId, user.id))
+      await tx.delete(feedSent).where(eq(feedSent.userId, user.id))
+    }
     if (type === 'calendar') await tx.delete(skillCalendar).where(eq(skillCalendar.userId, user.id))
     if (type === 'feed' && closed.length > 0) await bumpDaily(tx as unknown as Db, 'feed_unsubscribed')
     return closed.length > 0 ? 'revoked' : 'none'

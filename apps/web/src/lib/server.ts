@@ -41,12 +41,13 @@ export async function buildSession(state: ConsentState): Promise<SessionPayload>
     status: state.pdValid ? 'ready' : 'needConsent',
     beta: settings.betaBanner,
     consent: {
-      items: visibleConsentItems().map(({ type, required, title, hint, docPath }) => ({
+      items: visibleConsentItems(settings).map(({ type, required, title, hint, docPath, inAcceptAll }) => ({
         type,
         required,
         title,
         hint,
         docPath,
+        inAcceptAll,
       })),
       granted: Object.keys(state.granted) as SessionPayload['consent']['granted'],
     },
