@@ -32,6 +32,7 @@ import { RedWords } from './globals/RedWords'
 import { Settings } from './globals/Settings'
 import { Texts } from './globals/Texts'
 import { s3Config } from './lib/media-config'
+import { importDocxEndpoint } from './payload/endpoints/import-docx'
 import { testAnnounceEndpoint } from './payload/endpoints/test-announce'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -49,12 +50,13 @@ export default buildConfig({
         accessList: { Component: '/components/admin/AccessListView#AccessListView', path: '/access-list' },
         testers: { Component: '/components/admin/TestersView#TestersView', path: '/testers' },
         summary: { Component: '/components/admin/SummaryView#SummaryView', path: '/summary' },
+        importDocx: { Component: '/components/admin/ImportDocxView#ImportDocxView', path: '/import-docx' },
       },
     },
   },
   i18n: { supportedLanguages: { ru }, fallbackLanguage: 'ru' },
   collections: [
-    { ...Materials, endpoints: [testAnnounceEndpoint] },
+    { ...Materials, endpoints: [importDocxEndpoint, testAnnounceEndpoint] },
     Media,
     Tags,
     Skills,

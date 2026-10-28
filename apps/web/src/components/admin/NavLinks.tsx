@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 const LINKS = [
+  { href: '/admin/import-docx', label: 'Загрузить из .docx' },
   { href: '/admin/summary', label: 'Сводка' },
   { href: '/admin/access-list', label: 'Список доступа' },
   { href: '/admin/testers', label: 'Тестировщики' },

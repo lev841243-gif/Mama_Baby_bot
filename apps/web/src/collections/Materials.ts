@@ -281,6 +281,17 @@ export const Materials: CollectionConfig = {
       admin: { position: 'sidebar', description: 'Материал пропадает из списков и ленты.' },
     },
     {
+      name: 'importNotes',
+      label: 'Замечания импорта',
+      type: 'textarea',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        condition: (data) => Boolean(data?.importNotes),
+        description: 'Что проверить после загрузки .docx. Поле только для вас, маме не показывается.',
+      },
+    },
+    {
       name: 'tools',
       type: 'ui',
       admin: { position: 'sidebar', components: { Field: '/components/admin/MaterialTools#MaterialTools' } },

@@ -20,6 +20,7 @@ import { TOTPVerify as TOTPVerify_4eaf6cb33cfb75be01716613e3c9a512 } from 'paylo
 import { AccessListView as AccessListView_7c16147a842e8f7d7e275c3728e9b7cb } from '../../../components/admin/AccessListView'
 import { TestersView as TestersView_34e2bec8b6cfcb6592be9a871dafcd3a } from '../../../components/admin/TestersView'
 import { SummaryView as SummaryView_3f7102a7b929f1fe2580946e2f2d7138 } from '../../../components/admin/SummaryView'
+import { ImportDocxView as ImportDocxView_96dd5afb0a7016bf84d8297d10d0276d } from '../../../components/admin/ImportDocxView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 import { S3ClientUploadHandler as S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24 } from '@payloadcms/storage-s3/client'
 
@@ -47,6 +48,7 @@ export const importMap = {
   "/components/admin/AccessListView#AccessListView": AccessListView_7c16147a842e8f7d7e275c3728e9b7cb,
   "/components/admin/TestersView#TestersView": TestersView_34e2bec8b6cfcb6592be9a871dafcd3a,
   "/components/admin/SummaryView#SummaryView": SummaryView_3f7102a7b929f1fe2580946e2f2d7138,
+  "/components/admin/ImportDocxView#ImportDocxView": ImportDocxView_96dd5afb0a7016bf84d8297d10d0276d,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1,
   "@payloadcms/storage-s3/client#S3ClientUploadHandler": S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24
 }
