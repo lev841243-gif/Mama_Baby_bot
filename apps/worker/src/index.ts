@@ -2,6 +2,7 @@
 import { autoRetry } from '@grammyjs/auto-retry'
 import { apiThrottler } from '@grammyjs/transformer-throttler'
 import {
+  QUEUE_AI,
   QUEUE_BOT,
   T,
   createLogger,
@@ -16,9 +17,11 @@ import {
 } from '@mama/shared'
 import { getDb } from '@mama/shared/db'
 import { Queue, Worker } from 'bullmq'
-import { Bot, GrammyError } from 'grammy'
+import { Bot, GrammyError, InlineKeyboard } from 'grammy'
+import type { Message } from 'grammy/types'
 import { type AnnounceData, sendAnnounce } from './announce'
 import { type SendAudioData, sendAudio } from './audio'
+import { aiProvider, internalApi, runGroupBlocks } from './ai'
 import { setupBot } from './bot'
 
 const log = createLogger('worker')
@@ -38,7 +41,39 @@ bot.api.config.use(apiThrottler())
 
 // Отдельное соединение под кеш file_id и лимит поиска: соединение BullMQ занято блокирующими командами.
 const cache = createRedis()
-const { mainMenu } = setupBot(bot, { db, log, publicUrl, channelUrl, redis: cache })
+
+// Связь с web для канала и очереди ai (ТЗ 9.9). В Docker — http://web:3000.
+const callWeb = internalApi((process.env.WEB_INTERNAL_URL ?? 'http://web:3000').replace(/\/$/, ''), process.env.INTERNAL_SECRET ?? '')
+const channelId = Number(process.env.CHANNEL_ID) || null
+
+/** Картинка поста — web сохранит её в «Медиа» (для каруселей — и распознает текст). */
+async function photoOf(msg: Message) {
+  const size = msg.photo?.[msg.photo.length - 1]
+  if (!size || (size.file_size ?? 0) > 10 * 1024 * 1024) return []
+  const file = await bot.api.getFile(size.file_id)
+  const res = await fetch(`https://api.telegram.org/file/bot${token}/${file.file_path}`)
+  if (!res.ok) return []
+  return [{ base64: Buffer.from(await res.arrayBuffer()).toString('base64'), mimeType: 'image/jpeg', name: `post-${msg.message_id}.jpg` }]
+}
+
+const { mainMenu } = setupBot(bot, {
+  db,
+  log,
+  publicUrl,
+  channelUrl,
+  redis: cache,
+  channel: channelId
+    ? {
+        id: channelId,
+        onPost: async (msg) => {
+          await callWeb('channel/post', { message: msg, mediaGroupId: msg.media_group_id, images: await photoOf(msg) })
+        },
+        onEdited: async (msg) => {
+          await callWeb('channel/edited', { postId: msg.message_id, text: msg.text ?? msg.caption ?? '' })
+        },
+      }
+    : undefined,
+})
 
 bot.catch(({ error, ctx }) => {
   log.error({ err: error, user: ctx.from ? hashTgId(ctx.from.id) : undefined }, 'bot update failed')
@@ -94,6 +129,18 @@ const worker = new Worker<BotJob['data'], void, BotJob['name']>(
       case 'subscriptions-tick':
         await remindSubscriptions()
         break
+      case 'channel-button': {
+        // Кнопка под постом канала: url-кнопка (web_app в каналах нельзя), ведёт в приложение на материал.
+        const { postId, materialId } = job.data as Extract<BotJob, { name: 'channel-button' }>['data']
+        if (!channelId) break
+        const link = process.env.MINIAPP_URL
+          ? `${process.env.MINIAPP_URL}?startapp=m${materialId}`
+          : `https://t.me/${bot.botInfo.username}?startapp=m${materialId}`
+        await bot.api
+          .editMessageReplyMarkup(channelId, postId, { reply_markup: new InlineKeyboard().url(T.openAppButton, link) })
+          .catch((err: unknown) => log.warn({ err, postId }, 'channel button failed (нужно право редактировать сообщения)'))
+        break
+      }
       case 'send-audio':
         await sendToUser(tgId, () => sendAudio(bot.api, cache, job.data as SendAudioData))
         break
@@ -102,6 +149,16 @@ const worker = new Worker<BotJob['data'], void, BotJob['name']>(
   { connection: createRedis(), concurrency: 5 },
 )
 worker.on('failed', (job, err) => log.error({ err, job: job?.name }, 'bot job failed'))
+
+// Очередь ai: сборка статей из постов канала. По одной задаче за раз — запросы к ИИ тяжёлые.
+const aiWorker = new Worker<{ postIds?: number[] | null }>(
+  QUEUE_AI,
+  async (job) => {
+    if (job.name === 'group-blocks') await runGroupBlocks(callWeb, aiProvider(), log, job.data.postIds ?? null)
+  },
+  { connection: createRedis(), concurrency: 1 },
+)
+aiWorker.on('failed', (job, err) => log.error({ err, job: job?.name }, 'ai job failed'))
 
 /** Описание бота — текст автора (ТЗ 6.8). Меняется в админке, доезжает при проверке раз в 5 минут. */
 let appliedDescription = ''
@@ -140,7 +197,7 @@ async function configureBot() {
 
 async function shutdown(signal: string) {
   log.info({ signal }, 'shutting down')
-  await Promise.allSettled([bot.stop(), worker.close(), scheduler.close(), cache.quit()])
+  await Promise.allSettled([bot.stop(), worker.close(), aiWorker.close(), scheduler.close(), cache.quit()])
   await db.$client.end({ timeout: 5 })
   process.exit(0)
 }
@@ -150,6 +207,6 @@ process.once('SIGINT', () => void shutdown('SIGINT'))
 await configureBot()
 log.info({ publicUrl }, 'bot starting')
 await bot.start({
-  allowed_updates: ['message', 'callback_query', 'my_chat_member', 'pre_checkout_query'],
+  allowed_updates: ['message', 'callback_query', 'my_chat_member', 'pre_checkout_query', 'channel_post', 'edited_channel_post'],
   onStart: (me) => log.info({ bot: me.username }, 'bot started'),
 })

@@ -7,6 +7,7 @@ import * as migration_20261028_010000_seed_dictionaries from './20261028_010000_
 import * as migration_20261028_010517_step7_search from './20261028_010517_step7_search';
 import * as migration_20261028_010520_step7_drop_search_soon from './20261028_010520_step7_drop_search_soon';
 import * as migration_20261028_011106_step8_subscription from './20261028_011106_step8_subscription';
+import * as migration_20261028_011917_step9_channel from './20261028_011917_step9_channel';
 
 export const migrations = [
   {
@@ -52,6 +53,11 @@ export const migrations = [
   {
     up: migration_20261028_011106_step8_subscription.up,
     down: migration_20261028_011106_step8_subscription.down,
-    name: '20261028_011106_step8_subscription'
+    name: '20261028_011106_step8_subscription',
+  },
+  {
+    up: migration_20261028_011917_step9_channel.up,
+    down: migration_20261028_011917_step9_channel.down,
+    name: '20261028_011917_step9_channel'
   },
 ];

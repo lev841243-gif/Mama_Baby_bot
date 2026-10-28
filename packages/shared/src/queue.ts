@@ -14,6 +14,8 @@ export type BotJob =
   | { name: 'subscription-paid'; data: { tgId: number; endsAt: string } }
   /** Раз в час: напоминания за 3 дня до конца подписки (ТЗ 8.6, приёмка 18). */
   | { name: 'subscriptions-tick'; data: { tgId?: undefined } }
+  /** Кнопка «Открыть в приложении» под постом канала (ТЗ 9.9). */
+  | { name: 'channel-button'; data: { tgId?: undefined; postId: number; materialId: number } }
   /** Тестовая отправка анонса автору себе в бот (ТЗ 9.4). */
   | { name: 'test-announce'; data: { tgId: number; materialId: number; title: string; announce: string; photoUrl?: string } }
 

@@ -2,6 +2,8 @@ import Link from 'next/link'
 
 const LINKS = [
   { href: '/admin/import-docx', label: 'Загрузить из .docx' },
+  { href: '/admin/channel-import', label: 'Посты канала' },
+  { href: '/admin/collections/channel-posts?where[status][equals]=inbox', label: 'Входящие из канала' },
   { href: '/admin/summary', label: 'Сводка' },
   { href: '/admin/access-list', label: 'Список доступа' },
   { href: '/admin/testers', label: 'Тестировщики' },

@@ -225,3 +225,22 @@ test('«Хочу материал на эту тему»: только тема 
   await press('want:0')
   assert.deepEqual(sentTexts(), [T.searchWantThanks])
 })
+
+test('пост канала автора уходит в админку, чужие каналы игнорируются (ТЗ 9.9, приёмка 33)', async () => {
+  const got: number[] = []
+  const b = new Bot('1:test', { botInfo: { id: 1, is_bot: true, first_name: 'bot', username: 'test_bot' } as never })
+  b.api.config.use(async () => ({ ok: true, result: true }) as never)
+  setupBot(b, {
+    db: undefined as never,
+    log: pino({ level: 'silent' }),
+    publicUrl: 'https://example.test',
+    channelUrl: 'https://t.me/x',
+    redis: undefined as never,
+    channel: { id: -100777, onPost: async (m) => void got.push(m.message_id), onEdited: async () => undefined },
+  })
+  const post = (chatId: number, id: number) =>
+    b.handleUpdate({ update_id: id, channel_post: { message_id: id, date: 0, chat: { id: chatId, type: 'channel', title: 'c' }, text: 'пост' } } as Update)
+  await post(-100777, 11)
+  await post(-100999, 12)
+  assert.deepEqual(got, [11])
+})

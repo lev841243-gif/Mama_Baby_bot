@@ -28,6 +28,7 @@ import {
 } from '@mama/shared'
 import type { Db } from '@mama/shared/db'
 import { Bot, InlineKeyboard, type Context } from 'grammy'
+import type { Message } from 'grammy/types'
 import type { Redis } from 'ioredis'
 import type { Logger } from 'pino'
 
@@ -38,11 +39,17 @@ export type BotDeps = {
   channelUrl: string
   /** Счётчик лимита поиска (ТЗ 10.1). */
   redis: Pick<Redis, 'incr' | 'expire'>
+  /** Канал автора, где бот — администратор (ТЗ 9.9): новые и изменённые посты уходят в админку. */
+  channel?: {
+    id: number
+    onPost: (msg: Message) => Promise<void>
+    onEdited: (msg: Message) => Promise<void>
+  }
 }
 
 const html = { parse_mode: 'HTML' as const, link_preview_options: { is_disabled: true } }
 
-export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis }: BotDeps) {
+export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, channel }: BotDeps) {
   const vars = { siteUrl: publicUrl, channelUrl }
   const appUrl = (screen?: string) => `${publicUrl}/app${screen ? `?screen=${screen}` : ''}`
 
@@ -66,6 +73,14 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis }: Bo
       await ctx.reply(text, extra)
     }
   }
+
+  // 0а. Посты канала автора → «Входящие из канала» (ТЗ 9.9, приёмка 33). Другие каналы игнорируем.
+  bot.on('channel_post', async (ctx) => {
+    if (channel && ctx.chat.id === channel.id) await channel.onPost(ctx.channelPost)
+  })
+  bot.on('edited_channel_post', async (ctx) => {
+    if (channel && ctx.chat.id === channel.id) await channel.onEdited(ctx.editedChannelPost)
+  })
 
   // 0. Оплата Telegram Stars (TODO(Р21): включается PAYMENT_PROVIDER=stars). У pre_checkout_query нет чата,
   // поэтому до фильтра личных чатов. Платёж обрабатывается идемпотентно (приёмка 17).

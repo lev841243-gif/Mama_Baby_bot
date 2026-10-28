@@ -118,3 +118,40 @@ test('«красные слова»: формы, опечатки, фразы; �
   const calm = ['как уложить спать', 'прикорм кашей', 'какую крупу дать', 'научить ползать', 'кроватка для малыша', 'скоро ли сядет', 'сон днём', 'плачет перед сном']
   for (const q of calm) assert.equal(findRedWord(q, W), null, `лишнее срабатывание: ${q}`)
 })
+
+test('выгрузка канала: каждый пост — в блоки или в «пропущено» (приёмка 31)', async () => {
+  const { groupExport, classifyPost } = await import('./channel')
+  const long = 'Малыш просыпается ночью — это нормально. '.repeat(5)
+  const msgs = [
+    { id: 1, type: 'service', date: 'd1' },
+    { id: 2, type: 'message', date: 'd2', text: 'Доброе утро!' },
+    { id: 3, type: 'message', date: 'd3', text: [{ type: 'bold', text: 'Сон днём' }, `\n${long}\n`, { type: 'bold', text: 'Сон ночью' }, `\n${long}`] },
+    { id: 4, type: 'message', date: 'd4', photo: 'p1.jpg', text: '' },
+    { id: 5, type: 'message', date: 'd4', photo: 'p2.jpg', text: '' },
+    { id: 6, type: 'message', date: 'd6', forwarded_from: 'Другой канал', text: long },
+    { id: 7, type: 'message', date: 'd7', text: `${long} #реклама` },
+  ]
+  const posts = groupExport(msgs)
+  assert.deepEqual(posts.map((p) => p.postId), [1, 2, 3, 4, 6, 7], 'альбом 4+5 — один пост')
+  const res = posts.map(classifyPost)
+  assert.deepEqual(res.map((r) => r.kind), ['skip', 'skip', 'post', 'post', 'skip', 'skip'])
+  const post3 = res[2] as Extract<(typeof res)[number], { kind: 'post' }>
+  assert.deepEqual(post3.blocks.map((b) => b.heading), ['Сон днём', 'Сон ночью'])
+  assert.equal(post3.blocks[0]!.text, long)
+  assert.equal((res[3] as { carousel: boolean }).carousel, true)
+})
+
+test('сборка статьи из блоков без ИИ: в теле нет чужого текста, придуманное подсвечивается (приёмка 32)', async () => {
+  const { heuristicPlan } = await import('./ai')
+  const { checkAgainstSources } = await import('./source-check')
+  const post = 'Ритуал перед сном\nКупание, колыбельная и тишина.\nПовторяйте каждый вечер.'
+  const blocks = [{ id: 1, postId: 10, heading: 'Ритуал перед сном', text: 'Купание, колыбельная и тишина.\nПовторяйте каждый вечер.' }]
+  const plan = heuristicPlan(blocks)
+  assert.equal(plan.articles[0]!.title, 'Ритуал перед сном')
+  const body = blocks.map((b) => `${b.heading}\n${b.text}`).join('\n')
+  assert.ok(checkAgainstSources(body, [post]).every((l) => l.clean))
+  assert.ok(checkAgainstSources(plan.articles[0]!.announce, [post]).every((l) => l.clean))
+  const edited = checkAgainstSources('Купание, тёплая колыбельная и тишина.', [post])
+  assert.equal(edited[0]!.clean, false)
+  assert.ok(edited[0]!.segments.some((s) => !s.fromSource && s.text.includes('тёплая')))
+})

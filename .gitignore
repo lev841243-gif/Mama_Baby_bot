@@ -13,5 +13,3 @@ coverage/
 Thumbs.db
 /media/
 /backups/
-# Генерируется Payload в dev-режиме
-apps/web/src/payload-types.ts

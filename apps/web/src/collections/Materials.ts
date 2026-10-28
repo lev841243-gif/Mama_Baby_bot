@@ -1,8 +1,9 @@
 import { MATERIAL_TYPES, isAged, readingMinutes } from '@mama/shared/content'
-import type { CollectionBeforeChangeHook, CollectionConfig, Validate } from 'payload'
+import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, CollectionConfig, Validate } from 'payload'
 import { canCreateDraft, canEditDraft, isAdmin, never } from '../payload/access'
 import { auditCollectionChange } from '../payload/hooks/audit'
 import { lexicalPlainText } from '../lib/lexical-text'
+import { botQueue } from '../lib/queues'
 
 // Материалы (ТЗ 9.1–9.4). Мама видит только опубликованные и не в архиве; черновики — только админка.
 // Валидация «обязательно для типа» срабатывает при публикации: черновик можно сохранить недописанным.
@@ -24,6 +25,25 @@ const requiredFor =
 const stampPublished: CollectionBeforeChangeHook = ({ data, originalDoc }) => {
   if (data._status === 'published' && !originalDoc?.publishedAt && !data.publishedAt) data.publishedAt = new Date().toISOString()
   return data
+}
+
+/**
+ * Под постом канала, из которого собран опубликованный материал, бот ставит кнопку «Открыть в приложении»
+ * (ТЗ 9.9). Нужны CHANNEL_ID и право бота редактировать сообщения канала.
+ */
+const channelButton: CollectionAfterChangeHook = async ({ doc, req }) => {
+  if (req.context?.seed || doc._status !== 'published' || doc.archived) return doc
+  const postIds = ((doc.sources ?? []) as { postId?: number | null }[]).map((s) => s.postId).filter((n): n is number => typeof n === 'number')
+  if (postIds.length === 0) return doc
+  const posts = await req.payload.find({ collection: 'channel-posts', where: { postId: { in: postIds } }, depth: 0, limit: 50, pagination: false, req })
+  for (const p of posts.docs) {
+    // Статья опубликована — пост уходит из «Входящих».
+    if (p.status === 'inbox') await req.payload.update({ collection: 'channel-posts', id: p.id, data: { status: 'used' }, req })
+    if (!process.env.CHANNEL_ID || p.buttonMaterial === doc.id) continue
+    await botQueue().add('channel-button', { postId: p.postId, materialId: doc.id }, { removeOnComplete: true, removeOnFail: 100 })
+    await req.payload.update({ collection: 'channel-posts', id: p.id, data: { buttonMaterial: doc.id }, req })
+  }
+  return doc
 }
 
 /** Текст для поиска по словам (ТЗ 10.1): название, теги, шаги, текст и блоки упражнения. */
@@ -77,7 +97,7 @@ export const Materials: CollectionConfig = {
     maxPerDoc: 100,
   },
   access: { read: isAdmin, create: canCreateDraft, update: canEditDraft, delete: never, readVersions: isAdmin },
-  hooks: { beforeChange: [stampPublished, computeMinutes, buildSearchText], afterChange: [auditCollectionChange] },
+  hooks: { beforeChange: [stampPublished, computeMinutes, buildSearchText], afterChange: [auditCollectionChange, channelButton] },
   fields: [
     { name: 'title', label: 'Название', type: 'text', required: true },
     {
@@ -331,6 +351,15 @@ export const Materials: CollectionConfig = {
         readOnly: true,
         condition: (data) => Boolean(data?.importNotes),
         description: 'Что проверить после загрузки .docx. Поле только для вас, маме не показывается.',
+      },
+    },
+    {
+      name: 'sourceCheck',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        condition: (data) => Array.isArray(data?.sources) && data.sources.length > 0,
+        components: { Field: '/components/admin/SourceCheck#SourceCheck' },
       },
     },
     {

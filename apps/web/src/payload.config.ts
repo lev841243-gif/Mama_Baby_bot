@@ -20,6 +20,8 @@ import { buildConfig } from 'payload'
 import { payloadTotp } from 'payload-totp'
 import sharp from 'sharp'
 import { AuditLog } from './collections/AuditLog'
+import { ChannelBlocks } from './collections/ChannelBlocks'
+import { ChannelPosts } from './collections/ChannelPosts'
 import { ConsentVersions } from './collections/ConsentVersions'
 import { Materials } from './collections/Materials'
 import { Media } from './collections/Media'
@@ -33,7 +35,9 @@ import { Settings } from './globals/Settings'
 import { Subscription } from './globals/Subscription'
 import { Texts } from './globals/Texts'
 import { s3Config } from './lib/media-config'
+import { channelGroupEndpoint, channelImportEndpoint } from './payload/endpoints/channel'
 import { importDocxEndpoint } from './payload/endpoints/import-docx'
+import { sourceCheckEndpoint } from './payload/endpoints/source-check'
 import { testAnnounceEndpoint } from './payload/endpoints/test-announce'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -52,17 +56,20 @@ export default buildConfig({
         testers: { Component: '/components/admin/TestersView#TestersView', path: '/testers' },
         summary: { Component: '/components/admin/SummaryView#SummaryView', path: '/summary' },
         importDocx: { Component: '/components/admin/ImportDocxView#ImportDocxView', path: '/import-docx' },
+        channelImport: { Component: '/components/admin/ChannelImportView#ChannelImportView', path: '/channel-import' },
       },
     },
   },
   i18n: { supportedLanguages: { ru }, fallbackLanguage: 'ru' },
   collections: [
-    { ...Materials, endpoints: [importDocxEndpoint, testAnnounceEndpoint] },
+    { ...Materials, endpoints: [importDocxEndpoint, testAnnounceEndpoint, sourceCheckEndpoint] },
     Media,
     Tags,
     Skills,
     UsefulLinks,
     Playlists,
+    { ...ChannelPosts, endpoints: [channelImportEndpoint, channelGroupEndpoint] },
+    ChannelBlocks,
     ConsentVersions,
     Users,
     AuditLog,
