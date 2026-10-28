@@ -33,9 +33,33 @@ import { SubscriptionScreen } from './screens/SubscriptionScreen'
 import { UsefulScreen } from './screens/UsefulScreen'
 import { startParam, useBackButton } from './telegram'
 
+/**
+ * Отдельный чанк не загрузился — значит, приложение открыто со страницы прошлой сборки, а после деплоя таких
+ * файлов уже нет. Перезагружаем страницу один раз (флаг в sessionStorage — защита от бесконечной перезагрузки).
+ */
+function reloadOnChunkError<T>(load: () => Promise<T>): () => Promise<T> {
+  return () =>
+    load().catch((err: unknown) => {
+      try {
+        if (!sessionStorage.getItem('mama:chunk-reload')) {
+          sessionStorage.setItem('mama:chunk-reload', '1')
+          window.location.reload()
+          return new Promise<T>(() => {})
+        }
+      } catch {
+        /* без sessionStorage — просто показываем ошибку */
+      }
+      throw err
+    })
+}
+
 // Экраны этапа 2 — отдельными чанками: на JS первого экрана не влияют (CLAUDE.md, 150–200 КБ).
-const CalendarScreen = dynamic(() => import('./screens/CalendarScreen').then((m) => m.CalendarScreen), { loading: () => <Spinner size="l" /> })
-const FeedScreen = dynamic(() => import('./screens/FeedScreen').then((m) => m.FeedScreen), { loading: () => <Spinner size="l" /> })
+const CalendarScreen = dynamic(reloadOnChunkError(() => import('./screens/CalendarScreen').then((m) => m.CalendarScreen)), {
+  loading: () => <Spinner size="l" />,
+})
+const FeedScreen = dynamic(reloadOnChunkError(() => import('./screens/FeedScreen').then((m) => m.FeedScreen)), {
+  loading: () => <Spinner size="l" />,
+})
 
 type TgEnv = { ok: true; initData: string; platform: 'ios' | 'base' } | { ok: false }
 
