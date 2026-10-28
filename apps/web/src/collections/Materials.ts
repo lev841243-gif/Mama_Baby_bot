@@ -20,6 +20,12 @@ const requiredFor =
     return empty ? message : true
   }
 
+/** Дата первой публикации — для «Новое от автора». */
+const stampPublished: CollectionBeforeChangeHook = ({ data, originalDoc }) => {
+  if (data._status === 'published' && !originalDoc?.publishedAt && !data.publishedAt) data.publishedAt = new Date().toISOString()
+  return data
+}
+
 const computeMinutes: CollectionBeforeChangeHook = ({ data }) => {
   // Для статей и практик время чтения считается само, если автор не задала его (ТЗ 9.3).
   if (data.type !== 'exercise' && !data.minutesManual) {
@@ -48,7 +54,7 @@ export const Materials: CollectionConfig = {
     maxPerDoc: 100,
   },
   access: { read: isAdmin, create: canCreateDraft, update: canEditDraft, delete: never, readVersions: isAdmin },
-  hooks: { beforeChange: [computeMinutes], afterChange: [auditCollectionChange] },
+  hooks: { beforeChange: [stampPublished, computeMinutes], afterChange: [auditCollectionChange] },
   fields: [
     { name: 'title', label: 'Название', type: 'text', required: true },
     {
@@ -244,7 +250,7 @@ export const Materials: CollectionConfig = {
               relationTo: 'materials',
               hasMany: true,
               maxRows: 3,
-              filterOptions: ({ id }) => ({ id: { not_equals: id } }),
+              filterOptions: ({ id }) => (id ? { id: { not_equals: id } } : true),
             },
             {
               name: 'sources',
@@ -279,6 +285,13 @@ export const Materials: CollectionConfig = {
       defaultValue: false,
       index: true,
       admin: { position: 'sidebar', description: 'Материал пропадает из списков и ленты.' },
+    },
+    {
+      name: 'publishedAt',
+      label: 'Впервые опубликован',
+      type: 'date',
+      index: true,
+      admin: { position: 'sidebar', readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
     },
     {
       name: 'importNotes',

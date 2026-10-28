@@ -5,11 +5,13 @@ import { sql } from 'drizzle-orm'
 import {
   bigint,
   bigserial,
+  date,
   boolean,
   index,
   integer,
   jsonb,
   pgSchema,
+  primaryKey,
   smallint,
   text,
   timestamp,
@@ -88,6 +90,57 @@ export const feedSent = app.table(
     sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('feed_sent_user_material_uq').on(t.userId, t.materialId)],
+)
+
+/** Закладки (ТЗ 8.1, 11.1). material_id — id из схемы payload, без FK между схемами. */
+export const bookmarks = app.table(
+  'bookmarks',
+  {
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    materialId: integer('material_id').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('bookmarks_user_material_uq').on(t.userId, t.materialId)],
+)
+
+/** Отметки «выполнено» / «получилось» (ТЗ 8.2, 11.1): прогресс сохраняется между сеансами. */
+export const materialDone = app.table(
+  'material_done',
+  {
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    materialId: integer('material_id').notNull(),
+    doneAt: timestamp('done_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('material_done_user_material_uq').on(t.userId, t.materialId)],
+)
+
+/** Последний открытый материал — для «Продолжить» (ТЗ 8.1, 11.1). Одна строка на маму. */
+export const lastOpened = app.table('last_opened', {
+  userId: bigint('user_id', { mode: 'number' })
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  materialId: integer('material_id').notNull(),
+  openedAt: timestamp('opened_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ---------- Обезличенная статистика (ТЗ 11.2): без user_id, связать с человеком нельзя ----------
+
+export const statKind = app.enum('stat_kind', ['view', 'listen', 'done', 'hard'])
+
+/** Счётчики по материалу и дню: просмотры, прослушивания, «Получилось», «Пока не получается». */
+export const statMaterialDaily = app.table(
+  'stat_material_daily',
+  {
+    materialId: integer('material_id').notNull(),
+    day: date('day', { mode: 'string' }).notNull(),
+    kind: statKind('kind').notNull(),
+    count: integer('count').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.materialId, t.day, t.kind] })],
 )
 
 /** Переключатели проекта: закрытый режим, плашка беты и т.п. (правятся из админки, шаг 3). */

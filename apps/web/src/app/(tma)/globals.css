@@ -47,3 +47,13 @@ body {
 .doc blockquote { margin: 1em 0; padding: 8px 12px; background: var(--app-secondary-bg); border-radius: 8px; }
 .doc table { border-collapse: collapse; display: block; overflow-x: auto; font-size: 14px; }
 .doc th, .doc td { border: 1px solid var(--app-hint); padding: 4px 8px; vertical-align: top; }
+
+/* Текст статьи (ТЗ 9.5): подзаголовки, списки, ссылки, картинки. Крупный шрифт по умолчанию (ТЗ 8.8). */
+.material-body { font-size: 17px; line-height: 1.55; }
+.material-body h2 { font-size: 1.25em; font-weight: 600; margin: 1.2em 0 0.4em; line-height: 1.25; }
+.material-body h3 { font-size: 1.1em; font-weight: 600; margin: 1em 0 0.3em; }
+.material-body p, .material-body ul, .material-body ol { margin: 0.6em 0; }
+.material-body ul { list-style: disc; padding-left: 1.3em; }
+.material-body ol { list-style: decimal; padding-left: 1.3em; }
+.material-body a { color: var(--app-link); }
+.material-body img, .material-body video { width: 100%; height: auto; border-radius: 16px; margin: 0.8em 0; }

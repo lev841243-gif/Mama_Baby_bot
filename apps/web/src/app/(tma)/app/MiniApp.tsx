@@ -11,15 +11,20 @@ import {
   useSignal,
   viewport,
 } from '@telegram-apps/sdk-react'
-import { AppRoot, Button, Cell, List, Placeholder, Section, Spinner } from '@telegram-apps/telegram-ui'
-import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { AppRoot, Button, Placeholder, Spinner } from '@telegram-apps/telegram-ui'
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import type { SessionPayload } from '@/lib/session-types'
 import { ApiError, api } from './api'
 import { BetaBanner } from './BetaBanner'
-import { Confirm } from './Confirm'
 import { ConsentWindow } from './ConsentWindow'
-import { useBackButton } from './telegram'
+import { AppCtx, type Nav, type Screen, initialStack, useApp } from './nav'
+import { BookmarksScreen } from './screens/BookmarksScreen'
+import { HomeScreen } from './screens/HomeScreen'
+import { MaterialScreen } from './screens/MaterialScreen'
+import { SectionScreen } from './screens/SectionScreen'
+import { SettingsScreen } from './screens/SettingsScreen'
+import { startParam, useBackButton } from './telegram'
 
 type TgEnv = { ok: true; initData: string; platform: 'ios' | 'base' } | { ok: false }
 
@@ -97,17 +102,33 @@ function ThemedRoot({ platform, children }: { platform: 'ios' | 'base'; children
   )
 }
 
-type Screen = 'home' | 'settings' | 'consents'
+const FONT_KEY = 'mama:font-large'
 
-/** Экран из ссылки бота: /app?screen=consents — «Мои согласия» из настроек бота. */
-function initialScreen(): Screen {
-  const s = new URLSearchParams(window.location.search).get('screen')
-  return s === 'consents' || s === 'settings' ? s : 'home'
+/** «Крупнее шрифт» (ТЗ 8.8) — удобство этого устройства, не данные мамы: только localStorage. */
+function useFontLarge(): [boolean, (v: boolean) => void] {
+  const [large, setLarge] = useState(() => {
+    try {
+      return localStorage.getItem(FONT_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const set = (v: boolean) => {
+    setLarge(v)
+    try {
+      if (v) localStorage.setItem(FONT_KEY, '1')
+      else localStorage.removeItem(FONT_KEY)
+    } catch {
+      /* приватный режим — только на этот сеанс */
+    }
+  }
+  return [large, set]
 }
 
 function Screens({ initData }: { initData: string }) {
-  const [screen, setScreen] = useState<Screen>(initialScreen)
+  const [stack, setStack] = useState<Screen[]>(() => initialStack(startParam()))
   const [deleted, setDeleted] = useState(false)
+  const [fontLarge, setFontLarge] = useFontLarge()
   const queryClient = useQueryClient()
   const session = useQuery({
     queryKey: ['session'],
@@ -116,8 +137,23 @@ function Screens({ initData }: { initData: string }) {
     enabled: !deleted,
   })
 
-  const back = useCallback(() => setScreen((s) => (s === 'consents' ? 'settings' : 'home')), [])
-  const hasTgBack = useBackButton(screen !== 'home' && !deleted ? back : null)
+  const nav = useMemo<Nav>(
+    () => ({
+      push: (s) => {
+        setStack((st) => [...st, s])
+        window.scrollTo(0, 0)
+      },
+      back: () => setStack((st) => (st.length > 1 ? st.slice(0, -1) : st)),
+      replace: (s) => {
+        setStack((st) => [...st.slice(0, -1), s])
+        window.scrollTo(0, 0)
+      },
+    }),
+    [],
+  )
+  const screen = stack[stack.length - 1]!
+  const canBack = stack.length > 1 && !deleted
+  const hasTgBack = useBackButton(canBack ? nav.back : null)
 
   if (deleted && session.data) {
     const t = session.data.texts
@@ -131,9 +167,9 @@ function Screens({ initData }: { initData: string }) {
             mode="bezeled"
             onClick={() => {
               // Вход с нуля, как у нового человека (ТЗ 6.5).
+              queryClient.clear()
               setDeleted(false)
-              setScreen('home')
-              void queryClient.invalidateQueries({ queryKey: ['session'] })
+              setStack([{ name: 'home' }])
             }}
           >
             {t.backButton}
@@ -163,86 +199,54 @@ function Screens({ initData }: { initData: string }) {
 
   const data = session.data
   const onDeleted = () => setDeleted(true)
-  // Без основного согласия — только окно согласий, куда бы ни вела ссылка (ТЗ 8, приёмка 1).
-  const current: Screen | 'consent' = data.status === 'needConsent' ? 'consent' : screen
+  const needConsent = data.status === 'needConsent'
 
   return (
-    <div className="pb-[env(safe-area-inset-bottom)]">
-      {data.beta && <BetaBanner text={data.texts.betaBanner} />}
-      {current !== 'home' && current !== 'consent' && !hasTgBack && (
-        <button type="button" className="px-4 pt-3 text-[15px]" style={{ color: 'var(--tg-theme-link-color, #2481cc)' }} onClick={back}>
-          {data.texts.backButton}
-        </button>
-      )}
-      {current === 'consent' && <ConsentWindow key="first" mode="first" session={data} initData={initData} />}
-      {current === 'home' && <Home session={data} onSettings={() => setScreen('settings')} />}
-      {current === 'settings' && (
-        <Settings session={data} initData={initData} onConsents={() => setScreen('consents')} onDeleted={onDeleted} />
-      )}
-      {current === 'consents' && (
-        <ConsentWindow key="manage" mode="manage" session={data} initData={initData} onDeleted={onDeleted} />
-      )}
-    </div>
+    <AppCtx.Provider value={{ nav, initData, session: data }}>
+      <div className="pb-[calc(16px+env(safe-area-inset-bottom))]" style={fontLarge ? { zoom: 1.15 } : undefined}>
+        {data.beta && <BetaBanner text={data.texts.betaBanner} />}
+        {/* Без основного согласия — только окно согласий, куда бы ни вела ссылка (ТЗ 8, приёмка 1). */}
+        {needConsent ? (
+          <ConsentWindow key="first" mode="first" session={data} initData={initData} />
+        ) : (
+          <>
+            {canBack && !hasTgBack && (
+              <button type="button" className="px-4 pt-3 text-[15px]" style={{ color: 'var(--app-link)' }} onClick={nav.back}>
+                {data.texts.backButton}
+              </button>
+            )}
+            <ScreenView screen={screen} onDeleted={onDeleted} fontLarge={fontLarge} setFontLarge={setFontLarge} />
+          </>
+        )}
+      </div>
+    </AppCtx.Provider>
   )
 }
 
-/** Заглушка главной: экраны материалов — шаг 5 плана. */
-function Home({ session, onSettings }: { session: SessionPayload; onSettings: () => void }) {
-  return (
-    <>
-      <Placeholder
-        header="Дневник спокойного материнства"
-        description="Скоро здесь появятся материалы по возрасту малыша."
-        action={
-          <Button mode="bezeled" onClick={onSettings}>
-            {session.texts.settingsButton}
-          </Button>
-        }
-      />
-      <p className="px-4 text-center text-sm opacity-60">{session.texts.medicalDisclaimer}</p>
-    </>
-  )
-}
-
-/** Настройки (ТЗ 8.1, п. 12). Возраст, лента и закладки — следующие шаги. */
-function Settings({
-  session,
-  initData,
-  onConsents,
+function ScreenView({
+  screen,
   onDeleted,
+  fontLarge,
+  setFontLarge,
 }: {
-  session: SessionPayload
-  initData: string
-  onConsents: () => void
+  screen: Screen
   onDeleted: () => void
+  fontLarge: boolean
+  setFontLarge: (v: boolean) => void
 }) {
-  const t = session.texts
-  const [confirming, setConfirming] = useState(false)
-  const revokeAll = useMutation({
-    mutationFn: () => api<{ status: 'deleted' }>('/api/tma/revoke', initData),
-    onSuccess: onDeleted,
-  })
-
-  return (
-    <List>
-      <h1 className="px-4 pt-2 text-xl font-semibold">{t.appSettingsTitle}</h1>
-      <Section>
-        <Cell onClick={onConsents}>{t.myConsentsButton}</Cell>
-        <Cell onClick={() => setConfirming(true)} style={{ color: 'var(--tg-theme-destructive-text-color, #e53935)' }}>
-          {t.appRevokeAll}
-        </Cell>
-      </Section>
-      {confirming && (
-        <Confirm
-          text={t.revokeConfirm}
-          okText={t.revokeYes}
-          cancelText={t.revokeNo}
-          loading={revokeAll.isPending}
-          onOk={() => revokeAll.mutate()}
-          onCancel={() => setConfirming(false)}
-        />
-      )}
-      {revokeAll.isError && <p className="px-4 text-sm text-red-600">Не получилось удалить. Попробуйте ещё раз.</p>}
-    </List>
-  )
+  const { initData, session } = useApp()
+  switch (screen.name) {
+    case 'home':
+      return <HomeScreen />
+    case 'section':
+      return <SectionScreen key={screen.id} id={screen.id} />
+    case 'material':
+      return <MaterialScreen key={screen.id} id={screen.id} section={screen.section} />
+    case 'bookmarks':
+      return <BookmarksScreen />
+    case 'settings':
+      return <SettingsScreen onDeleted={onDeleted} fontLarge={fontLarge} setFontLarge={setFontLarge} />
+    case 'consents':
+      return <ConsentWindow key="manage" mode="manage" session={session} initData={initData} onDeleted={onDeleted} />
+  }
 }

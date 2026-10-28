@@ -24,7 +24,8 @@ export type MaterialView = {
   easierVariant: string
   whenToSeeDoctor: string
   audio: AudioView | null
-  seeAlso: number[]
+  /** Только опубликованные и не в архиве. */
+  seeAlso: MaterialCard[]
   skillsLeadsTo: number[]
   skillsRequires: number[]
 }
@@ -93,7 +94,9 @@ export function toView(doc: Record<string, unknown>): MaterialView {
       audio && typeof audio === 'object' && audio.mimeType?.startsWith('audio/')
         ? { src: signedMediaPath(audio.id, 'original'), mimeType: audio.mimeType, mediaId: audio.id }
         : null,
-    seeAlso: ids(doc.seeAlso),
+    seeAlso: (Array.isArray(doc.seeAlso) ? (doc.seeAlso as Record<string, unknown>[]) : [])
+      .filter((d) => typeof d === 'object' && d._status === 'published' && !d.archived)
+      .map(toCard),
     skillsLeadsTo: ids(doc.skillsLeadsTo),
     skillsRequires: ids(doc.skillsRequires),
   }

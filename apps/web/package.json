@@ -27,6 +27,7 @@
     "@telegram-apps/sdk-react": "3.3.9",
     "@telegram-apps/telegram-ui": "2.1.13",
     "bullmq": "6.5.0",
+    "embla-carousel-react": "8.6.0",
     "graphql": "16.14.2",
     "ioredis": "5.11.1",
     "mammoth": "1.13.0",

@@ -21,3 +21,15 @@ export function ageSection(months: number): AgeSectionId | null {
   return AGE_SECTIONS.find((s) => months >= s.from && months < s.to)?.id ?? null
 }
 
+
+/** Годы, которые можно выбрать кнопками: ребёнку не больше 18 месяцев плюс запас, не в будущем. */
+export function birthYearOptions(now = new Date()): number[] {
+  const y = now.getFullYear()
+  return [y - 2, y - 1, y]
+}
+
+export function isValidBirth(year: number, month: number, now = new Date()): boolean {
+  if (!birthYearOptions(now).includes(year) || month < 1 || month > 12) return false
+  return ageInMonths(year, month, now) >= 0
+}
+

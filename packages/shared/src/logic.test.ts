@@ -68,3 +68,11 @@ test('версии согласий из админки: первая верси
   assert.deepEqual(v.feed, { current: '1.1', required: '1.0' })
   assert.deepEqual(v.ads, { current: '0.1', required: '0.1' })
 })
+
+test('материал «4–9» попадает в разделы «3–6» и «6–9» (приёмка 8)', async () => {
+  const { sectionsForRange } = await import('./content')
+  assert.deepEqual(sectionsForRange(4, 9), ['3-6', '6-9'])
+  assert.deepEqual(sectionsForRange(6, 9), ['6-9'])
+  assert.deepEqual(sectionsForRange(3, 18), ['3-6', '6-9', '9-12', '12-18'])
+  assert.deepEqual(sectionsForRange(0, 3), [])
+})

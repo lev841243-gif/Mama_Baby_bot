@@ -2,25 +2,14 @@ import { and, eq, lt } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db } from './db/client'
 import { users } from './db/schema'
-import { ageInMonths } from './age'
+import { isValidBirth } from './age'
 
 export * from './age'
-
-/** Годы, которые можно выбрать кнопками: ребёнку не больше 18 месяцев плюс запас, не в будущем. */
-export function birthYearOptions(now = new Date()): number[] {
-  const y = now.getFullYear()
-  return [y - 2, y - 1, y]
-}
 
 export const childBirthInput = z.object({
   year: z.number().int(),
   month: z.number().int().min(1).max(12),
 })
-
-export function isValidBirth(year: number, month: number, now = new Date()): boolean {
-  if (!birthYearOptions(now).includes(year) || month < 1 || month > 12) return false
-  return ageInMonths(year, month, now) >= 0
-}
 
 export async function setChildBirth(db: Db, tgId: number, birth: { year: number; month: number } | null) {
   if (birth && !isValidBirth(birth.year, birth.month)) throw new Error('invalid birth month')

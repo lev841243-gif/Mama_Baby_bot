@@ -1,6 +1,7 @@
 import type { Texts } from '@mama/shared'
 import type { ClientImage } from '@/lib/media-url'
 import type { MaterialView } from '@/lib/material-view'
+import { PreviewClient } from './PreviewClient'
 
 function Img({ img, className }: { img: ClientImage | null; className?: string }) {
   if (!img) return null
@@ -31,40 +32,10 @@ export function MaterialPreview({ material: m, texts, status }: { material: Mate
         </div>
       </section>
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold uppercase opacity-60">В приложении</h2>
-        {m.type !== 'exercise' && <Img img={m.cover} className="w-full rounded-2xl" />}
-        <h1 className="text-2xl font-semibold leading-tight">{m.title}</h1>
-        <p className="text-sm opacity-60">
-          {[m.tags.join(', '), m.minutes ? `${m.minutes} мин` : null, m.ageFrom !== null ? `${m.ageFrom}–${m.ageTo} мес.` : null]
-            .filter(Boolean)
-            .join(' · ')}
-        </p>
-        {m.steps.map((s, i) => (
-          <div key={i} className="overflow-hidden rounded-2xl" style={{ background: 'var(--app-secondary-bg)' }}>
-            <Img img={s.image} className="aspect-square w-full object-cover" />
-            <p className="p-3 text-[17px]">
-              <b>Шаг {i + 1}.</b> {s.text}
-            </p>
-          </div>
-        ))}
-        {m.bodyHtml && <div className="doc !p-0" dangerouslySetInnerHTML={{ __html: m.bodyHtml }} />}
-        {m.audio && <audio controls src={m.audio.src} className="w-full" />}
-        {m.howToKnow && <Block title="Как понять, что получается" text={m.howToKnow} />}
-        {m.type === 'exercise' && <Block title="Пока не получается" text={m.ifNotWorking || '(общий текст из «Текстов»)'} />}
-        {m.easierVariant && <Block title="Облегчённый вариант" text={m.easierVariant} />}
-        {m.whenToSeeDoctor && <Block title="Когда показать врачу" text={m.whenToSeeDoctor} />}
-        <p className="text-center text-sm opacity-60">{texts.medicalDisclaimer}</p>
+      <section>
+        <h2 className="mb-2 text-sm font-semibold uppercase opacity-60">В приложении</h2>
+        <PreviewClient m={m} t={texts} />
       </section>
     </main>
-  )
-}
-
-function Block({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="rounded-2xl p-3" style={{ background: 'var(--app-secondary-bg)' }}>
-      <p className="font-semibold">{title}</p>
-      <p className="mt-1 whitespace-pre-line">{text}</p>
-    </div>
   )
 }
