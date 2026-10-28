@@ -1,8 +1,11 @@
 // Процесс worker: бот grammY (long polling) + обработчики очередей BullMQ.
 import { autoRetry } from '@grammyjs/auto-retry'
+import * as Sentry from '@sentry/node'
 import { apiThrottler } from '@grammyjs/transformer-throttler'
 import {
   QUEUE_AI,
+  WORKER_HEARTBEAT_KEY,
+  alert,
   QUEUE_BOT,
   T,
   createLogger,
@@ -25,6 +28,21 @@ import { aiProvider, internalApi, runGroupBlocks } from './ai'
 import { setupBot } from './bot'
 
 const log = createLogger('worker')
+
+// Ошибки → GlitchTip, если задан SENTRY_DSN. Без данных мам: ни пользователя, ни текста сообщений (ТЗ 11.5).
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.DOMAIN ?? 'local',
+    tracesSampleRate: 0,
+    beforeSend(event) {
+      delete event.user
+      delete event.request
+      event.breadcrumbs = []
+      return event
+    },
+  })
+}
 
 const token = process.env.BOT_TOKEN
 if (!token) {
@@ -77,6 +95,8 @@ const { mainMenu } = setupBot(bot, {
 
 bot.catch(({ error, ctx }) => {
   log.error({ err: error, user: ctx.from ? hashTgId(ctx.from.id) : undefined }, 'bot update failed')
+  Sentry.captureException(error)
+  void alert('bot-update', 'Бот: ошибка при обработке сообщения (подробности в GlitchTip и логах)')
 })
 
 /** Сообщение маме из очереди. Заблокировала бот — помечаем, рассылки ей не идут (ТЗ 13). */
@@ -148,7 +168,12 @@ const worker = new Worker<BotJob['data'], void, BotJob['name']>(
   },
   { connection: createRedis(), concurrency: 5 },
 )
-worker.on('failed', (job, err) => log.error({ err, job: job?.name }, 'bot job failed'))
+worker.on('failed', (job, err) => {
+  log.error({ err, job: job?.name }, 'bot job failed')
+  Sentry.captureException(err)
+  // Оплата и рассылки — критичное (ТЗ 13): исполнитель узнаёт сразу.
+  void alert(`job:${job?.name}`, `Бот: задача «${job?.name}» не выполнилась — ${String(err).slice(0, 200)}`)
+})
 
 // Очередь ai: сборка статей из постов канала. По одной задаче за раз — запросы к ИИ тяжёлые.
 const aiWorker = new Worker<{ postIds?: number[] | null }>(
@@ -158,7 +183,16 @@ const aiWorker = new Worker<{ postIds?: number[] | null }>(
   },
   { connection: createRedis(), concurrency: 1 },
 )
-aiWorker.on('failed', (job, err) => log.error({ err, job: job?.name }, 'ai job failed'))
+aiWorker.on('failed', (job, err) => {
+  log.error({ err, job: job?.name }, 'ai job failed')
+  Sentry.captureException(err)
+  void alert('job:ai', `ИИ: сборка статей из канала не выполнилась — ${String(err).slice(0, 200)}`)
+})
+
+// Отметка «жив» для /api/health и Uptime Kuma.
+const beat = () => cache.set(WORKER_HEARTBEAT_KEY, String(Date.now()), 'EX', 600).catch(() => undefined)
+void beat()
+setInterval(beat, 30_000).unref()
 
 /** Описание бота — текст автора (ТЗ 6.8). Меняется в админке, доезжает при проверке раз в 5 минут. */
 let appliedDescription = ''

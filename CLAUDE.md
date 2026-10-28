@@ -110,6 +110,7 @@ corepack pnpm db:generate                                 # после прав�
 ```
 
 - Сервер (Beget VPS, `/opt/mama`): обновление — `bash infra/deploy/update.sh`, откат — `bash infra/deploy/rollback.sh`, подробно — [docs/deploy.md](docs/deploy.md).
+- Мониторинг, алерты, бэкап (`infra/backup/backup.sh`, `restore-check.sh`), CI и ручной деплой из GitHub Actions — [docs/ekspluatatsiya.md](docs/ekspluatatsiya.md). Проверка здоровья — `/api/health`.
 - Сервис `migrate` в compose прогоняет `payload migrate`, затем drizzle-миграции и добавляет `ACCESS_LIST_TG_IDS` в `app.access_list`.
 - `next build` на Windows падает на шаге standalone (нет прав на симлинки) — это нормально, собирать в Docker.
 - Мини-приложение: `/app`, API: `/api/tma/*` (заголовок `Authorization: tma <initData>`), юр. страницы: `/terms`, `/privacy`, `/consent`, `/rassylka`, `/oferta`, админка: `/admin`.

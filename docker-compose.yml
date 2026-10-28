@@ -5,10 +5,18 @@ x-app-env: &app-env
   DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
   REDIS_URL: redis://redis:6379
 
+# Логи контейнеров: не больше 100 МБ на сервис; по времени — logrotate, 30 дней (infra/logrotate, ТЗ 11.5).
+x-logging: &logging
+  driver: json-file
+  options: { max-size: '20m', max-file: '5' }
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
+    # GlitchTip (профиль monitoring) держит секционированные таблицы — ему нужно больше блокировок.
+    command: ['postgres', '-c', 'max_locks_per_transaction=512']
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -23,6 +31,7 @@ services:
       retries: 10
 
   redis:
+    logging: *logging
     image: redis:7-alpine
     restart: unless-stopped
     command: ['redis-server', '--appendonly', 'yes']
@@ -35,6 +44,7 @@ services:
       retries: 10
 
   migrate:
+    logging: *logging
     build: { context: ., target: migrate }
     env_file: .env
     environment: *app-env
@@ -43,6 +53,7 @@ services:
     restart: 'no'
 
   web:
+    logging: *logging
     build: { context: ., target: web }
     restart: unless-stopped
     env_file: .env
@@ -57,6 +68,7 @@ services:
       redis: { condition: service_healthy }
 
   worker:
+    logging: *logging
     build: { context: ., target: worker }
     restart: unless-stopped
     env_file: .env
@@ -66,6 +78,7 @@ services:
       redis: { condition: service_healthy }
 
   caddy:
+    logging: *logging
     image: caddy:2-alpine
     restart: unless-stopped
     ports:
@@ -90,7 +103,37 @@ services:
     depends_on:
       - web
 
+  # Мониторинг (ТЗ 13): docker compose --profile monitoring up -d. Интерфейсы — только через SSH-туннель:
+  # ssh -L 8000:127.0.0.1:8000 -L 3001:127.0.0.1:3001 сервер → http://localhost:8000 (GlitchTip), :3001 (Uptime Kuma).
+  glitchtip:
+    image: glitchtip/glitchtip:6.2.6
+    profiles: ['monitoring']
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/glitchtip
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-}
+      PORT: '8000'
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost:8000}
+      GLITCHTIP_EMBED_WORKER: 'True'
+      VALKEY_URL: redis://redis:6379/1
+      EMAIL_URL: consolemail://
+      DEFAULT_FROM_EMAIL: glitchtip@localhost
+    ports: ['127.0.0.1:8000:8000']
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:2.5.8
+    profiles: ['monitoring']
+    restart: unless-stopped
+    logging: *logging
+    volumes:
+      - kuma:/app/data
+    ports: ['127.0.0.1:3001:3001']
+
 volumes:
+  kuma:
   media:
   pgdata:
   redisdata:

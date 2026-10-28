@@ -1,0 +1,56 @@
+# Проверка каждого push и PR: миграции по порядку (сначала Payload, потом drizzle-kit), типы, тесты, сборка образов.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mama
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: mama
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U mama -d mama" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    env:
+      DATABASE_URL: postgres://mama:ci@localhost:5432/mama
+      TEST_DATABASE_URL: postgres://mama:ci@localhost:5432/mama
+      REDIS_URL: redis://localhost:6379
+      PAYLOAD_SECRET: ci-only
+      LOG_HASH_SECRET: ci-only
+      BOT_TOKEN: '1:ci'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: corepack pnpm install --frozen-lockfile
+      - name: Схемы payload и app
+        run: psql postgres://mama:ci@localhost:5432/mama -f infra/postgres/init.sql
+      - name: Миграции по порядку
+        run: |
+          corepack pnpm -F @mama/web payload migrate
+          corepack pnpm -F @mama/shared db:migrate
+      - run: corepack pnpm typecheck
+      - run: corepack pnpm test
+
+  images:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - name: Сборка образов (без публикации)
+        run: |
+          docker build --target web -t mama-web:ci .
+          docker build --target worker -t mama-worker:ci .

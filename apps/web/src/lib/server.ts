@@ -2,6 +2,7 @@ import 'server-only'
 import {
   CLIENT_TEXT_KEYS,
   QUEUE_BOT,
+  alert,
   checkAccess,
   createLogger,
   createRedis,
@@ -93,6 +94,7 @@ export function tmaRoute(handler: Handler, { requireConsent = true }: RouteOptio
       return await handler({ tgId, isTester: testerPhase, req })
     } catch (e) {
       log.error({ err: e, user: hashTgId(tgId) }, 'tma api error')
+      void alert(`tma:${new URL(req.url).pathname}`, `Ошибка API приложения: ${new URL(req.url).pathname}`)
       return NextResponse.json({ error: 'internal' }, { status: 500 })
     }
   }

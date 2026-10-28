@@ -1,0 +1,13 @@
+# Логи контейнеров хранятся не дольше 30 дней (ТЗ 11.5). Установка:
+#   sudo cp infra/logrotate/mama-docker /etc/logrotate.d/mama-docker
+# В логах нет Telegram ID в открытом виде, имён и текстов запросов (pino + hashTgId), но срок всё равно ограничен.
+/var/lib/docker/containers/*/*-json.log {
+    daily
+    rotate 30
+    maxage 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+}

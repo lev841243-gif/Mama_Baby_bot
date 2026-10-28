@@ -1,0 +1,42 @@
+# Деплой на сервер — только вручную (Actions → Deploy → Run workflow), после зелёного CI.
+# На сервере запускается infra/deploy/update.sh: дамп базы, git pull, сборка; миграции идут сервисом migrate
+# строго по порядку (сначала Payload, потом drizzle-kit). Откат — infra/deploy/rollback.sh (docs/deploy.md).
+# Секреты репозитория: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (приватный ключ), DEPLOY_PATH (по умолчанию /opt/mama).
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH-ключ
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+      - name: Обновление на сервере
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          DIR: ${{ secrets.DEPLOY_PATH || '/opt/mama' }}
+        run: |
+          ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new "$USER@$HOST" \
+            "cd '$DIR' && bash infra/deploy/update.sh"
+      - name: Проверка здоровья
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          DIR: ${{ secrets.DEPLOY_PATH || '/opt/mama' }}
+        # /api/health: web, база, Redis и бот живы. В образе web нет curl — проверяем через node.
+        run: |
+          for i in $(seq 1 30); do
+            if ssh -i ~/.ssh/id_deploy "$USER@$HOST" "cd '$DIR' && docker compose exec -T web node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\""; then exit 0; fi
+            sleep 10
+          done
+          exit 1

@@ -44,3 +44,7 @@ export async function countUsers(db: Db): Promise<{ total: number; testers: numb
     .from(users)
   return { total: row?.total ?? 0, testers: row?.testers ?? 0 }
 }
+
+export async function pingDb(db: Db) {
+  await db.execute(sql`select 1`)
+}
