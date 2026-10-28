@@ -7,6 +7,7 @@ import { useState } from 'react'
 import type { SessionPayload } from '@/lib/session-types'
 import { api } from './api'
 import { Confirm } from './Confirm'
+import { useApp } from './nav'
 import { haptic } from './telegram'
 
 const linkStyle = { color: 'var(--tg-theme-link-color, #2481cc)' }
@@ -32,6 +33,7 @@ export function ConsentWindow({ session, initData, mode, onDeleted }: Props) {
   const [declined, setDeclined] = useState(false)
   const [revoking, setRevoking] = useState<ConsentType | null>(null)
   const queryClient = useQueryClient()
+  const { nav } = useApp()
 
   const grant = useMutation({
     mutationFn: (types: ConsentType[]) => api<SessionPayload>('/api/tma/consents', initData, { types }),
@@ -39,6 +41,8 @@ export function ConsentWindow({ session, initData, mode, onDeleted }: Props) {
       haptic((h) => h.notificationOccurred.ifAvailable('success'))
       setChecked(new Set(next.consent.granted))
       queryClient.setQueryData(['session'], next)
+      // Отмечена лента — сразу спрашиваем возраст и время (ТЗ 8.9).
+      if (!manage && next.consent.granted.includes('feed')) nav.push({ name: 'feed' })
     },
   })
 

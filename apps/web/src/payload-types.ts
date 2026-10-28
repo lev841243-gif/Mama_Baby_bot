@@ -1143,6 +1143,43 @@ export interface Text {
   subscriptionPaid?: string | null;
   subscriptionReminder?: string | null;
   subscriptionOpen?: string | null;
+  feedButton?: string | null;
+  feedOffer?: string | null;
+  feedTermsLink?: string | null;
+  feedSubscribe?: string | null;
+  feedNotNow?: string | null;
+  feedNotNowDone?: string | null;
+  feedAskAge?: string | null;
+  feedAskSlot?: string | null;
+  feedSlotMorning?: string | null;
+  feedSlotDay?: string | null;
+  feedSlotEvening?: string | null;
+  feedSubscribed?: string | null;
+  feedWaitThree?: string | null;
+  feedTooOld?: string | null;
+  feedNeedAge?: string | null;
+  feedStatusOn?: string | null;
+  feedStatusPaused?: string | null;
+  feedSetupNeeded?: string | null;
+  feedSetupButton?: string | null;
+  feedTimeButton?: string | null;
+  feedTzButton?: string | null;
+  feedAskTz?: string | null;
+  feedPauseButton?: string | null;
+  feedAskPause?: string | null;
+  feedPauseWeek?: string | null;
+  feedPause2Weeks?: string | null;
+  feedPauseMonth?: string | null;
+  feedPaused?: string | null;
+  feedResumeButton?: string | null;
+  feedResumed?: string | null;
+  feedUnsubButton?: string | null;
+  feedUnsubConfirm?: string | null;
+  feedUnsubYes?: string | null;
+  feedUnsubDone?: string | null;
+  feedOpenButton?: string | null;
+  feedResumeTomorrow?: string | null;
+  feedFarewell?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1213,6 +1250,18 @@ export interface Setting {
    */
   musicWidget?: boolean | null;
   feedPerWeek?: number | null;
+  /**
+   * Пункт «Календарь навыков» в окне согласий, «Записать навык» в боте, экран календаря. Для мам — только после решения юриста (Р23).
+   */
+  calendarEnabled?: boolean | null;
+  /**
+   * Пункт «Новости автора» в окне согласий и разовые рассылки. Нужно согласие юриста.
+   */
+  authorNews?: boolean | null;
+  /**
+   * Если юрист скажет, что эти согласия даются только своей галочкой.
+   */
+  acceptAllSkipsOptional?: boolean | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1362,6 +1411,43 @@ export interface TextsSelect<T extends boolean = true> {
   subscriptionPaid?: T;
   subscriptionReminder?: T;
   subscriptionOpen?: T;
+  feedButton?: T;
+  feedOffer?: T;
+  feedTermsLink?: T;
+  feedSubscribe?: T;
+  feedNotNow?: T;
+  feedNotNowDone?: T;
+  feedAskAge?: T;
+  feedAskSlot?: T;
+  feedSlotMorning?: T;
+  feedSlotDay?: T;
+  feedSlotEvening?: T;
+  feedSubscribed?: T;
+  feedWaitThree?: T;
+  feedTooOld?: T;
+  feedNeedAge?: T;
+  feedStatusOn?: T;
+  feedStatusPaused?: T;
+  feedSetupNeeded?: T;
+  feedSetupButton?: T;
+  feedTimeButton?: T;
+  feedTzButton?: T;
+  feedAskTz?: T;
+  feedPauseButton?: T;
+  feedAskPause?: T;
+  feedPauseWeek?: T;
+  feedPause2Weeks?: T;
+  feedPauseMonth?: T;
+  feedPaused?: T;
+  feedResumeButton?: T;
+  feedResumed?: T;
+  feedUnsubButton?: T;
+  feedUnsubConfirm?: T;
+  feedUnsubYes?: T;
+  feedUnsubDone?: T;
+  feedOpenButton?: T;
+  feedResumeTomorrow?: T;
+  feedFarewell?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
@@ -1414,6 +1500,9 @@ export interface SettingsSelect<T extends boolean = true> {
   smallSectionMin?: T;
   musicWidget?: T;
   feedPerWeek?: T;
+  calendarEnabled?: T;
+  authorNews?: T;
+  acceptAllSkipsOptional?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

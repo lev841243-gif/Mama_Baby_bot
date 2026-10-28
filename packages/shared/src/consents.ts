@@ -155,6 +155,28 @@ export async function grantConsents(
 }
 
 /**
+ * Необязательное согласие позже окна: «Подписаться на ленту», «Включить календарь» (ТЗ 8.9, шаблон 07 §5–6).
+ * Только при действующем основном согласии; пишет текущую версию, если её ещё нет. Возвращает id мамы.
+ */
+export async function grantOptionalConsent(db: Db, tgId: number, type: Exclude<ConsentType, 'pd'>): Promise<number> {
+  const state = await getConsentState(db, tgId)
+  if (!state.pdValid || state.userId === null) throw new Error('pd consent required')
+  const userId = state.userId
+  if (state.granted[type]) return userId
+  const version = (await getConsentVersions(db))[type].current
+  await db.transaction(async (tx) => {
+    const now = new Date()
+    // Устаревшая версия этого согласия закрывается, новая — отдельной записью (ТЗ 6.6).
+    await tx
+      .update(consents)
+      .set({ revokedAt: now })
+      .where(and(eq(consents.userId, userId), eq(consents.type, type), isNull(consents.revokedAt)))
+    await tx.insert(consents).values({ userId, type, version, grantedAt: now })
+  })
+  return userId
+}
+
+/**
  * Полный отзыв согласия (ТЗ 6.5, 11.5): физическое удаление мамы. Всё её — через ON DELETE CASCADE,
  * записи об оплате остаются с обнулённой ссылкой. Возвращает false, если удалять было нечего.
  */

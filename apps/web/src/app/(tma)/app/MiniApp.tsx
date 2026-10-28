@@ -21,6 +21,7 @@ import { ConsentWindow } from './ConsentWindow'
 import { AppCtx, type Nav, type Screen, initialStack, useApp } from './nav'
 import { BookmarksScreen } from './screens/BookmarksScreen'
 import { CalmScreen } from './screens/CalmScreen'
+import { FeedScreen } from './screens/FeedScreen'
 import { HomeScreen } from './screens/HomeScreen'
 import { MatchScreen } from './screens/MatchScreen'
 import { MaterialScreen } from './screens/MaterialScreen'
@@ -264,6 +265,8 @@ function ScreenView({
       return <SubscriptionScreen />
     case 'settings':
       return <SettingsScreen onDeleted={onDeleted} fontLarge={fontLarge} setFontLarge={setFontLarge} />
+    case 'feed':
+      return <FeedScreen />
     case 'consents':
       return <ConsentWindow key="manage" mode="manage" session={session} initData={initData} onDeleted={onDeleted} />
   }

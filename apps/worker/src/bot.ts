@@ -31,6 +31,7 @@ import { Bot, InlineKeyboard, type Context } from 'grammy'
 import type { Message } from 'grammy/types'
 import type { Redis } from 'ioredis'
 import type { Logger } from 'pino'
+import { setupFeedBot } from './feed-bot'
 
 export type BotDeps = {
   db: Db
@@ -55,8 +56,14 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
 
   const openApp = (text: string = T.openAppButton) => new InlineKeyboard().webApp(text, appUrl())
   const mainMenu = () =>
-    // «Записать навык» и «Лента» появятся на этапе 2: в меню только то, что работает.
-    new InlineKeyboard().webApp(T.openAppButton, appUrl()).row().text(T.helpButton, 'help').text(T.settingsButton, 'settings')
+    // В меню только то, что работает (ТЗ 6.2): «Записать навык» — с включённым календарём.
+    new InlineKeyboard()
+      .webApp(T.openAppButton, appUrl())
+      .row()
+      .text(T.feedButton, 'feed')
+      .row()
+      .text(T.helpButton, 'help')
+      .text(T.settingsButton, 'settings')
 
   const betaPrefix = async () => ((await getSettings(db)).betaBanner ? `${T.betaBot}\n\n` : '')
 
@@ -204,6 +211,8 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
     const kb = new InlineKeyboard()
       .text(T.ageButton, 'age')
       .row()
+      .text(T.feedButton, 'feed')
+      .row()
       .webApp(T.myConsentsButton, appUrl('consents'))
       .row()
       .text(T.revokeButton, 'revoke')
@@ -214,33 +223,37 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
   bot.command('settings', showSettings)
   bot.callbackQuery('settings', showSettings)
 
-  // 8. Возраст ребёнка: месяц и год кнопками, только по желанию (ТЗ 6.3).
-  bot.callbackQuery('age', async (ctx) => {
+  // 8. Возраст ребёнка: месяц и год кнопками, только по желанию или когда нужен ленте (ТЗ 6.3).
+  // Суффикс `:f` — выбор идёт из подписки на ленту, после месяца она продолжается.
+  const ageYearKeyboard = async (next?: 'feed', tgId?: number) => {
+    const suffix = next === 'feed' ? ':f' : ''
     const kb = new InlineKeyboard()
-    for (const y of birthYearOptions()) kb.text(String(y), `age:y:${y}`)
+    for (const y of birthYearOptions()) kb.text(String(y), `age:y:${y}${suffix}`)
     kb.row()
-    if (await getChildBirth(db, ctx.from.id)) kb.text(T.ageClearButton, 'age:clear').row()
-    kb.text(T.backButton, 'settings')
-    await show(ctx, T.ageAskYear, kb)
-  })
+    if (!next && tgId && (await getChildBirth(db, tgId))) kb.text(T.ageClearButton, 'age:clear').row()
+    return kb.text(T.backButton, next === 'feed' ? 'feed' : 'settings')
+  }
+  bot.callbackQuery('age', async (ctx) => show(ctx, T.ageAskYear, await ageYearKeyboard(undefined, ctx.from.id)))
 
-  bot.callbackQuery(/^age:y:(\d{4})$/, async (ctx) => {
+  bot.callbackQuery(/^age:y:(\d{4})(:f)?$/, async (ctx) => {
     const year = Number(ctx.match[1])
+    const suffix = ctx.match[2] ?? ''
     const kb = new InlineKeyboard()
     MONTHS_RU.forEach((name, i) => {
       if (!isValidBirth(year, i + 1)) return
-      kb.text(name, `age:m:${year}:${i + 1}`)
+      kb.text(name, `age:m:${year}:${i + 1}${suffix}`)
       if (i % 3 === 2) kb.row()
     })
-    kb.row().text(T.backButton, 'age')
+    kb.row().text(T.backButton, suffix ? 'feed:sub' : 'age')
     await show(ctx, T.ageAskMonth, kb)
   })
 
-  bot.callbackQuery(/^age:m:(\d{4}):(\d{1,2})$/, async (ctx) => {
+  bot.callbackQuery(/^age:m:(\d{4}):(\d{1,2})(:f)?$/, async (ctx) => {
     const year = Number(ctx.match[1])
     const month = Number(ctx.match[2])
     if (!isValidBirth(year, month)) return ctx.answerCallbackQuery()
     await setChildBirth(db, ctx.from.id, { year, month })
+    if (ctx.match[3]) return feed.startSubscribe(ctx)
     let text = fmt(T.ageSaved, { month: MONTHS_RU[month - 1]!, year: String(year) })
     if (ageInMonths(year, month) < 3) text += `\n\n${T.ageTooYoung}`
     await show(ctx, text, new InlineKeyboard().text(T.backButton, 'settings'))
@@ -250,6 +263,9 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
     await setChildBirth(db, ctx.from.id, null)
     await show(ctx, T.ageCleared, new InlineKeyboard().text(T.backButton, 'settings'))
   })
+
+  // 8а. Лента (ТЗ 7).
+  const feed = setupFeedBot(bot, { db, log, publicUrl, show, mainMenu, ageYearKeyboard: (next) => ageYearKeyboard(next) })
 
   // 9. Свободный текст — поиск по материалам автора (ТЗ 6.4, 10.1); «красные слова» уже проверены выше.
   bot.on('message:voice', (ctx) => ctx.reply(T.voiceNotSupported, { reply_markup: openApp() }))

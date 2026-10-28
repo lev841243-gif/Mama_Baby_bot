@@ -2,8 +2,8 @@
 // Запуск: TEST_DATABASE_URL=postgres://…localhost:55432/… corepack pnpm -F @mama/worker test
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, test } from 'node:test'
-import { DEFAULT_TEXTS as T, grantConsents } from '@mama/shared'
-import { createDb, users, type Db } from '@mama/shared/db'
+import { DEFAULT_TEXTS as T, getConsentState, grantConsents } from '@mama/shared'
+import { createDb, feedSettings, users, type Db } from '@mama/shared/db'
 import { eq } from 'drizzle-orm'
 import { Bot } from 'grammy'
 import type { Update } from 'grammy/types'
@@ -101,7 +101,7 @@ test('с согласием: меню, настройки, возраст кно
   await grantConsents(db, ME, ['pd'], { isTester: true })
   await send('/start')
   assert.deepEqual(sentTexts(), [T.mainMenu])
-  assert.deepEqual(buttons(), [T.openAppButton, 'help', 'settings'])
+  assert.deepEqual(buttons(), [T.openAppButton, 'feed', 'help', 'settings'])
 
   await press('age')
   const year = new Date().getFullYear()
@@ -114,6 +114,59 @@ test('с согласием: меню, настройки, возраст кно
   await press(`age:m:${year + 1}:1`)
   const [same] = await db.select().from(users).where(eq(users.tgId, ME))
   assert.equal(same!.childBirthYear, year, 'дата в будущем не сохраняется')
+})
+
+/** Месяц и год рождения малыша, которому сейчас `months` полных месяцев. */
+function bornMonthsAgo(months: number) {
+  const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() - months)
+  return { year: d.getFullYear(), month: d.getMonth() + 1 }
+}
+
+test('лента в боте: подписка с возрастом и временем, пауза, пояс, отписка (ТЗ 7)', { skip: !url }, async () => {
+  await grantConsents(db, ME, ['pd'], { isTester: true })
+  await press('feed')
+  assert.deepEqual(buttons(), ['feed:sub', 'feed:no', 'menu'])
+
+  // Возраст не указан — сначала месяц и год (ТЗ 6.3), потом время.
+  await press('feed:sub')
+  assert.deepEqual(sentTexts().at(-1), T.feedAskAge)
+  const b = bornMonthsAgo(5)
+  assert.ok(buttons().includes(`age:y:${b.year}:f`))
+  await press(`age:m:${b.year}:${b.month}:f`)
+  assert.equal(sentTexts().at(-1), T.feedAskSlot)
+  await press('feed:slot:evening')
+  const [user] = await db.select().from(users).where(eq(users.tgId, ME))
+  const [fs] = await db.select().from(feedSettings).where(eq(feedSettings.userId, user!.id))
+  assert.equal(fs?.slot, 'evening')
+  assert.equal(fs?.timezone, 'Europe/Moscow')
+  assert.ok((await getConsentState(db, ME)).granted.feed, 'согласие на ленту записано')
+
+  await press('feed:time')
+  await press('feed:slot:morning')
+  await press('feed:pause:7')
+  await press('feed:tz:0')
+  const [fs2] = await db.select().from(feedSettings).where(eq(feedSettings.userId, user!.id))
+  assert.equal(fs2?.slot, 'morning')
+  assert.equal(fs2?.timezone, 'Europe/Kaliningrad')
+  assert.ok(fs2?.pausedUntil && fs2.pausedUntil > new Date(), 'пауза стоит, смена времени её не сняла')
+  await press('feed:resume')
+  const [fs3] = await db.select().from(feedSettings).where(eq(feedSettings.userId, user!.id))
+  assert.equal(fs3?.pausedUntil, null)
+
+  await press('feed:unsub:yes')
+  assert.equal((await db.select().from(feedSettings).where(eq(feedSettings.userId, user!.id))).length, 0)
+  assert.equal((await getConsentState(db, ME)).granted.feed, undefined)
+})
+
+test('лента в боте: малышу 18 месяцев — подписка не предлагается (ТЗ 5)', { skip: !url }, async () => {
+  await grantConsents(db, ME, ['pd'], { isTester: true })
+  const b = bornMonthsAgo(19)
+  await press(`age:m:${b.year}:${b.month}`)
+  await press('feed:sub')
+  assert.equal(sentTexts().at(-1), T.feedTooOld)
+  assert.equal((await getConsentState(db, ME)).granted.feed, undefined)
 })
 
 test('голос, файлы и текст получают свои ответы (ТЗ 6.4)', { skip: !url }, async () => {

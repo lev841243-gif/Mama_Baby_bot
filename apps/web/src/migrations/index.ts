@@ -9,6 +9,7 @@ import * as migration_20261028_010520_step7_drop_search_soon from './20261028_01
 import * as migration_20261028_011106_step8_subscription from './20261028_011106_step8_subscription';
 import * as migration_20261028_011917_step9_channel from './20261028_011917_step9_channel';
 import * as migration_20261028_063943_step2_settings from './20261028_063943_step2_settings';
+import * as migration_20261028_064707_step2_feed_texts from './20261028_064707_step2_feed_texts';
 
 export const migrations = [
   {
@@ -64,6 +65,11 @@ export const migrations = [
   {
     up: migration_20261028_063943_step2_settings.up,
     down: migration_20261028_063943_step2_settings.down,
-    name: '20261028_063943_step2_settings'
+    name: '20261028_063943_step2_settings',
+  },
+  {
+    up: migration_20261028_064707_step2_feed_texts.up,
+    down: migration_20261028_064707_step2_feed_texts.down,
+    name: '20261028_064707_step2_feed_texts'
   },
 ];

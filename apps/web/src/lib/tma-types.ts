@@ -1,5 +1,6 @@
 // Ответы API мини-приложения. Только типы — импортируются и клиентом.
 import type { AgeSectionId } from '@mama/shared/age'
+import type { FeedStatePayload } from '@mama/shared/feed-types'
 import type { MaterialCard, MaterialView } from './material-view'
 
 export type Card = MaterialCard & { done?: boolean }
@@ -15,6 +16,13 @@ export type HomePayload = {
   birth: Birth | null
   continue: Card | null
   fresh: Card[]
+  /** Согласие на ленту есть, время не выбрано — предложить настроить (ТЗ 8.9, Л3). */
+  feedSetup: boolean
+}
+
+export type FeedPayload = {
+  state: FeedStatePayload
+  result: 'ok' | 'need_birth' | 'too_old' | null
 }
 
 export type SectionPayload = { section: SectionInfo; exercises: Card[]; articles: Card[] }

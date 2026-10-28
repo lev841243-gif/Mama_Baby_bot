@@ -22,6 +22,13 @@ export function HomeScreen() {
     <List>
       <h1 className="px-4 pt-3 text-[22px] font-semibold leading-tight">{t.homeTitle}</h1>
       {h.tooYoung && <p className="px-4 text-[15px] opacity-80">{t.ageTooYoung}</p>}
+      {h.feedSetup && (
+        <Section>
+          <Cell multiline onClick={() => nav.push({ name: 'feed' })} description={t.feedSetupButton}>
+            {t.feedSetupNeeded}
+          </Cell>
+        </Section>
+      )}
 
       {h.continue && (
         <Section header={t.homeContinue}>

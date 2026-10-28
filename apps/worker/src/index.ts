@@ -13,6 +13,7 @@ import {
   dueReminders,
   fmt,
   getConfig,
+  getFeedState,
   hashTgId,
   markReminded,
   setBotBlocked,
@@ -113,6 +114,11 @@ async function sendToUser(tgId: number, send: () => Promise<unknown>) {
 }
 
 
+async function needsFeedSetup(tgId: number) {
+  const st = await getFeedState(db, tgId)
+  return st.consent && !st.settings
+}
+
 /** Напоминание за 3 дня до конца подписки (ТЗ 8.6, шаблон 07 §7). Закрытие по сроку — само: доступ считается по дате. */
 async function remindSubscriptions() {
   for (const r of await dueReminders(db)) {
@@ -132,6 +138,11 @@ const worker = new Worker<BotJob['data'], void, BotJob['name']>(
       case 'consent-granted':
         // После окна согласий в чате появляется главное меню (ТЗ 6.1).
         await sendToUser(tgId, () => bot.api.sendMessage(tgId, T.afterConsent, { reply_markup: mainMenu() }))
+        // Отмечена лента — спрашиваем возраст и время (ТЗ 8.9), если приложение ещё не спросило.
+        if (await needsFeedSetup(tgId)) {
+          const kb = new InlineKeyboard().text(T.feedSetupButton, 'feed:sub')
+          await sendToUser(tgId, () => bot.api.sendMessage(tgId, T.feedSetupNeeded, { reply_markup: kb }))
+        }
         break
       case 'data-deleted':
         // Отзыв из приложения: последнее сообщение в чат (ТЗ 6.5).
