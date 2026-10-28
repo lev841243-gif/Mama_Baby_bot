@@ -14,7 +14,7 @@ import {
 import { AppRoot, Button, Placeholder, Spinner } from '@telegram-apps/telegram-ui'
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { SessionPayload } from '@/lib/session-types'
 import { ApiError, api } from './api'
 import { BetaBanner } from './BetaBanner'
@@ -107,6 +107,8 @@ function setupTelegram(): TgEnv {
 }
 
 export default function MiniApp() {
+  // Приложение запустилось — диагностика белого экрана из layout не нужна.
+  useEffect(() => document.documentElement.setAttribute('data-app-mounted', '1'), [])
   const [env] = useState(setupTelegram)
   const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1 } } }))
 
