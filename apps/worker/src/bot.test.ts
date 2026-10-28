@@ -256,7 +256,8 @@ test('тестовый анонс: картинка с подписью и кн�
   assert.equal(sent[0]!.method, 'sendPhoto')
   assert.equal(sent[0]!.payload.caption, '<b>Упражнение &lt;1&gt;</b>\n\nДве строки')
   const kb = sent[0]!.payload.reply_markup as { inline_keyboard: { web_app: { url: string } }[][] }
-  assert.equal(kb.inline_keyboard[0]![0]!.web_app.url, 'https://example.test/app?m=7')
+  // Адрес с версией (против кеша страницы на iPhone) и id материала.
+  assert.match(kb.inline_keyboard[0]![0]!.web_app.url, /^https:\/\/example\.test\/app\?v=[a-z0-9]+&m=7$/)
   sent.length = 0
   failPhoto = true
   await sendAnnounce(api, pino({ level: 'silent' }), 'https://example.test', data)
