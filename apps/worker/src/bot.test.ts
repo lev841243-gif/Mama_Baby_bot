@@ -12,6 +12,8 @@ import { setupBot } from './bot'
 
 const url = process.env.TEST_DATABASE_URL
 process.env.CLOSED_MODE = 'false'
+// Календарь по умолчанию выключен: его тест включает флаг сам.
+process.env.CALENDAR_ENABLED = 'false'
 process.env.LOG_HASH_SECRET ??= 'test'
 
 const ME = -2001 // отрицательный ID: в Telegram таких нет

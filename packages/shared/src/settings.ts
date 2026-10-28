@@ -90,8 +90,9 @@ export function defaultSettings(): AppSettings {
     smallSectionMin: 5,
     // TODO(Р24): включить после проверки виджета на телефонах.
     musicWidget: false,
-    // TODO(Р23): включить после решения юриста по календарю.
-    calendarEnabled: false,
+    // Лев 28.10.2026: на время разработки календарь и голос включены (голос — фейковый провайдер, TODO(Р4)).
+    // Пишут только тестировщики, их данные удаляются перед бета-тестом. TODO(Р23): для мам — после юриста.
+    calendarEnabled: flag('CALENDAR_ENABLED', true),
     // TODO(Р6): на старте разовые рассылки не делаем.
     authorNews: false,
     // TODO(Р27): решает юрист.

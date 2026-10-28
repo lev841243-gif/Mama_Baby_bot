@@ -22,6 +22,8 @@ import { resetSettingsCache, setAppSettings } from './settings'
 import { runInactiveCleanup } from './inactive'
 
 const url = process.env.TEST_DATABASE_URL
+// Календарь по умолчанию выключен: его тесты включают флаг сами.
+process.env.CALENDAR_ENABLED = 'false'
 // Отрицательные ID в Telegram не бывают — тестовые записи не пересекутся с настоящими.
 const A = -1001
 const B = -1002
