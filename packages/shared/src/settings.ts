@@ -41,6 +41,12 @@ export type AppSettings = {
   inactiveMonths: number
   /** Р10: обезличенный журнал отзывов — тип согласия, день, число; без ID. */
   revocationLog: boolean
+  /** Поиск по смыслу (этап 3): выключен — поиск по словам, как на этапе 1. */
+  semanticSearch: boolean
+  /** Порог сходства 0–1: ниже — «Такой статьи пока нет». Подбирается тестом автора «25 из 30» (ТЗ 10.1). */
+  searchMinSimilarity: number
+  /** Лимит поисковых запросов в день на маму (ТЗ 10.1), общий для приложения, бота и голоса (Л10). */
+  searchPerDay: number
 }
 
 export type Texts = Record<TextKey, string>
@@ -69,6 +75,9 @@ export const SETTINGS_KEYS = [
   'inactiveCleanup',
   'inactiveMonths',
   'revocationLog',
+  'semanticSearch',
+  'searchMinSimilarity',
+  'searchPerDay',
 ] as const
 export const CONFIG_KEYS = { texts: 'texts', redWords: 'redWords', consentVersions: 'consentVersions', subscription: 'subscription' } as const
 
@@ -102,6 +111,11 @@ export function defaultSettings(): AppSettings {
     inactiveMonths: 12,
     // TODO(Р10): включить, если юрист скажет, что журнал нужен.
     revocationLog: false,
+    // Этап 3: своя модель векторов (Л7). Порог 0,84 — для multilingual-e5-small по пробным запросам;
+    // уточняется на тесте автора (шаг 4).
+    semanticSearch: flag('SEMANTIC_SEARCH', true),
+    searchMinSimilarity: 0.84,
+    searchPerDay: 30,
   }
 }
 

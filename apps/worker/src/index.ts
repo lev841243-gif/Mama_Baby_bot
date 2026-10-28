@@ -99,6 +99,7 @@ const { mainMenu } = setupBot(bot, {
   channelUrl,
   redis: cache,
   speech: speechProvider(),
+  embed: embedProvider(),
   downloadFile,
   channel: channelId
     ? {

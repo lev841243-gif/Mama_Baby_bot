@@ -9,7 +9,9 @@ import {
   fmt,
   getActiveSubscriptionUntil,
   cachedSettings,
+  fakeEmbedProvider,
   fakeSpeechProvider,
+  findMaterials,
   getChildBirth,
   bumpWantedTopic,
   findRedWord,
@@ -24,10 +26,10 @@ import {
   monthsLabel,
   processPayment,
   setBotBlocked,
-  searchMaterials,
   setChildBirth,
   takeSearchQuota,
   touchUser,
+  type EmbedProvider,
   type SpeechProvider,
 } from '@mama/shared'
 import type { Db } from '@mama/shared/db'
@@ -46,6 +48,8 @@ export type BotDeps = {
   channelUrl: string
   /** Счётчик лимита поиска (ТЗ 10.1). */
   redis: Pick<Redis, 'incr' | 'expire'>
+  /** Векторы для поиска по смыслу (этап 3). Без сервиса — поиск по словам. */
+  embed?: EmbedProvider
   /** Распознавание голосовых для календаря (ТЗ 10.2). TODO(Р4): пока фейковый провайдер. */
   speech?: SpeechProvider
   /** Скачать голосовое в память (без записи на диск). */
@@ -60,7 +64,7 @@ export type BotDeps = {
 
 const html = { parse_mode: 'HTML' as const, link_preview_options: { is_disabled: true } }
 
-export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, channel, speech = fakeSpeechProvider, downloadFile }: BotDeps) {
+export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, channel, speech = fakeSpeechProvider, embed = fakeEmbedProvider, downloadFile }: BotDeps) {
   const vars = { siteUrl: publicUrl, channelUrl }
   const appUrl = (screen?: string) => appLink(publicUrl, screen ? { screen } : {})
 
@@ -300,8 +304,11 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
   // 9. Свободный текст — поиск по материалам автора (ТЗ 6.4, 10.1); «красные слова» уже проверены выше.
   bot.on('message:text', async (ctx) => {
     if (ctx.message.text.startsWith('/')) return ctx.reply(T.mainMenu, { reply_markup: mainMenu() })
-    if (!(await takeSearchQuota(redis, ctx.from.id))) return ctx.reply(T.searchLimit, { reply_markup: openApp() })
-    const hits = await searchMaterials(db, ctx.message.text, 5)
+    if (!(await takeSearchQuota(redis, ctx.from.id, (await getSettings(db)).searchPerDay))) return ctx.reply(T.searchLimit, { reply_markup: openApp() })
+    // По смыслу (этап 3) с откатом на слова. Текста запроса нет ни в логах, ни в базе (ТЗ 11.4).
+    const started = Date.now()
+    const { mode, hits } = await findMaterials(db, ctx.message.text, embed, 5)
+    log.info({ user: hashTgId(ctx.from.id), mode, found: hits.length, ms: Date.now() - started }, 'search (bot)')
     if (hits.length === 0) {
       return ctx.reply(T.searchNothing, { reply_markup: new InlineKeyboard().text(T.searchWant, 'want').row().webApp(T.openAppButton, appUrl()) })
     }

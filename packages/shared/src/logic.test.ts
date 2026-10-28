@@ -248,3 +248,11 @@ test('векторы материала: название с анонсом, т�
   const cos = (x: number[], y: number[]) => x.reduce((s, v, i) => s + v * y[i]!, 0)
   assert.ok(cos(a!, b!) > cos(a!, c!), 'общие основы слов ближе')
 })
+
+test('гибрид поиска: найденное и по смыслу, и по словам — выше; не больше трёх', async () => {
+  const { mergeHits } = await import('./search')
+  const h = (id: number) => ({ id, title: `m${id}`, access: 'free' as const, type: 'article' })
+  assert.deepEqual(mergeHits([h(1), h(2), h(3)], [h(3), h(4)]).map((x) => x.id), [3, 1, 2])
+  assert.deepEqual(mergeHits([], [h(4)]).map((x) => x.id), [4])
+  assert.deepEqual(mergeHits([], []), [])
+})

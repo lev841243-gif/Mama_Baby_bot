@@ -20,7 +20,8 @@ import {
 } from './calendar'
 import { resetSettingsCache, setAppSettings } from './settings'
 import { runInactiveCleanup } from './inactive'
-import { fakeEmbedProvider, syncMaterialVectors } from './embed'
+import { fakeEmbedProvider, syncMaterialVectors, type EmbedProvider } from './embed'
+import { findMaterials } from './search'
 
 const url = process.env.TEST_DATABASE_URL
 // Календарь по умолчанию выключен: его тесты включают флаг сами.
@@ -425,4 +426,47 @@ test('векторы материалов: только опубликованн
     .catch((err: unknown) => {
       if (!(err instanceof Rollback)) throw err
     })
+})
+
+test('поиск по смыслу: 1–3 материала выше порога, иначе пусто; сбой сервиса и выключатель — поиск по словам (этап 3)', { skip: !url }, async () => {
+  class Rollback extends Error {}
+  // Векторы по основам слов, но не «fake»: findMaterials считает фейковый провайдер отсутствием сервиса.
+  const test: EmbedProvider = { ...fakeEmbedProvider, id: 'test' }
+  const broken: EmbedProvider = { ...test, embed: async () => Promise.reject(new Error('embed: HTTP 503')) }
+  await db
+    .transaction(async (txRaw) => {
+      const tx = txRaw as unknown as Db
+      const mat = async (title: string, text: string) => {
+        const [r] = await tx.execute<{ id: number }>(sql`
+          insert into payload.materials (title, type, "order", access, _status, search_text)
+          values (${title}, 'article', 1, 'free', 'published', ${text})
+          returning id`)
+        return Number(r!.id)
+      }
+      const sleep = await mat('Тест: дневной сон', 'Малыш не спит днём, капризничает перед дневным сном')
+      await mat('Тест: прикорм овощами', 'Овощное пюре ложечкой')
+      await syncMaterialVectors(tx, test)
+      await setAppSettings(tx, { semanticSearch: true, searchMinSimilarity: 0.3 })
+      resetSettingsCache()
+
+      const ok = await findMaterials(tx, 'не спит днём', test)
+      assert.equal(ok.mode, 'semantic')
+      assert.equal(ok.hits[0]?.id, sleep)
+      assert.ok(ok.hits.length <= 3)
+      assert.deepEqual((await findMaterials(tx, 'налоговый вычет квартира', test)).hits, [], 'ниже порога — ничего')
+
+      const down = await findMaterials(tx, 'дневной сон', broken)
+      assert.equal(down.mode, 'fallback')
+      assert.equal(down.hits[0]?.id, sleep, 'сбой сервиса — поиск по словам')
+
+      assert.equal((await findMaterials(tx, 'дневной сон', fakeEmbedProvider)).mode, 'words', 'без сервиса векторов — по словам')
+      await setAppSettings(tx, { semanticSearch: false })
+      resetSettingsCache()
+      assert.equal((await findMaterials(tx, 'дневной сон', test)).mode, 'words')
+      throw new Rollback()
+    })
+    .catch((err: unknown) => {
+      if (!(err instanceof Rollback)) throw err
+    })
+  resetSettingsCache()
 })

@@ -110,6 +110,32 @@ export const Settings: GlobalConfig = {
     },
     {
       type: 'collapsible',
+      label: 'Поиск (этап 3)',
+      fields: [
+        {
+          name: 'semanticSearch',
+          label: 'Поиск по смыслу работает',
+          type: 'checkbox',
+          defaultValue: d.semanticSearch,
+          admin: {
+            description:
+              'Мама пишет своими словами и получает 1–3 материала. Подбор только по сходству с материалами, без генеративного ИИ; запрос не сохраняется. Выключено или сервис недоступен — поиск по словам.',
+          },
+        },
+        {
+          name: 'searchMinSimilarity',
+          label: 'Порог сходства (0–1)',
+          type: 'number',
+          min: 0,
+          max: 1,
+          defaultValue: d.searchMinSimilarity,
+          admin: { description: 'Выше — меньше лишнего, но чаще «Такой статьи пока нет». Подбирается тестом «25 из 30».' },
+        },
+        { name: 'searchPerDay', label: 'Запросов в день на маму', type: 'number', min: 1, max: 1000, defaultValue: d.searchPerDay },
+      ],
+    },
+    {
+      type: 'collapsible',
       label: 'Хранение данных (Р9, Р10)',
       fields: [
         {

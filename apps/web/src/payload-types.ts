@@ -1331,6 +1331,15 @@ export interface Setting {
    */
   acceptAllSkipsOptional?: boolean | null;
   /**
+   * Мама пишет своими словами и получает 1–3 материала. Подбор только по сходству с материалами, без генеративного ИИ; запрос не сохраняется. Выключено или сервис недоступен — поиск по словам.
+   */
+  semanticSearch?: boolean | null;
+  /**
+   * Выше — меньше лишнего, но чаще «Такой статьи пока нет». Подбирается тестом «25 из 30».
+   */
+  searchMinSimilarity?: number | null;
+  searchPerDay?: number | null;
+  /**
    * Мама без действий в боте и приложении получает предупреждение, через 2 недели её данные удаляются, как при отзыве согласия (записи об оплате остаются). Включать после решения заказчицы и юриста.
    */
   inactiveCleanup?: boolean | null;
@@ -1638,6 +1647,9 @@ export interface SettingsSelect<T extends boolean = true> {
   calendarEnabled?: T;
   authorNews?: T;
   acceptAllSkipsOptional?: T;
+  semanticSearch?: T;
+  searchMinSimilarity?: T;
+  searchPerDay?: T;
   inactiveCleanup?: T;
   inactiveMonths?: T;
   revocationLog?: T;
