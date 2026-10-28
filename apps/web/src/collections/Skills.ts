@@ -23,6 +23,15 @@ export const Skills: CollectionConfig = {
       relationTo: 'tags',
       admin: { description: 'Например, «Ползание» — и навык, и тег.' },
     },
+    {
+      name: 'synonyms',
+      label: 'Как говорят мамы',
+      type: 'textarea',
+      admin: {
+        description:
+          'По одной фразе в строке: «пополз», «ползает». Так бот понимает голосовую запись календаря (ТЗ 10.4). Пусто — стартовый список из docs/teksty-etap-2.md.',
+      },
+    },
     { name: 'hidden', label: 'Скрыт', type: 'checkbox', defaultValue: false },
   ],
 }

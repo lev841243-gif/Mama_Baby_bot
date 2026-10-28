@@ -10,6 +10,7 @@ import * as migration_20261028_011106_step8_subscription from './20261028_011106
 import * as migration_20261028_011917_step9_channel from './20261028_011917_step9_channel';
 import * as migration_20261028_063943_step2_settings from './20261028_063943_step2_settings';
 import * as migration_20261028_064707_step2_feed_texts from './20261028_064707_step2_feed_texts';
+import * as migration_20261028_070121_step2_calendar from './20261028_070121_step2_calendar';
 
 export const migrations = [
   {
@@ -70,6 +71,11 @@ export const migrations = [
   {
     up: migration_20261028_064707_step2_feed_texts.up,
     down: migration_20261028_064707_step2_feed_texts.down,
-    name: '20261028_064707_step2_feed_texts'
+    name: '20261028_064707_step2_feed_texts',
+  },
+  {
+    up: migration_20261028_070121_step2_calendar.up,
+    down: migration_20261028_070121_step2_calendar.down,
+    name: '20261028_070121_step2_calendar'
   },
 ];

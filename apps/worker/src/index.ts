@@ -19,6 +19,7 @@ import {
   markReminded,
   runFeedTick,
   setBotBlocked,
+  speechProvider,
   type BotJob,
   type FeedSender,
 } from '@mama/shared'
@@ -78,12 +79,22 @@ async function photoOf(msg: Message) {
   return [{ base64: Buffer.from(await res.arrayBuffer()).toString('base64'), mimeType: 'image/jpeg', name: `post-${msg.message_id}.jpg` }]
 }
 
+/** Голосовое — в память и сразу в распознавание (ТЗ 10.2): ни на диск, ни в Redis. */
+async function downloadFile(fileId: string): Promise<Buffer> {
+  const file = await bot.api.getFile(fileId)
+  const res = await fetch(`https://api.telegram.org/file/bot${token}/${file.file_path}`)
+  if (!res.ok) throw new Error(`telegram file: HTTP ${res.status}`)
+  return Buffer.from(await res.arrayBuffer())
+}
+
 const { mainMenu } = setupBot(bot, {
   db,
   log,
   publicUrl,
   channelUrl,
   redis: cache,
+  speech: speechProvider(),
+  downloadFile,
   channel: channelId
     ? {
         id: channelId,

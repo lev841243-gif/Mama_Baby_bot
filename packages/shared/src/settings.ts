@@ -154,6 +154,11 @@ export async function getConfig(db: Db): Promise<SharedConfig> {
   return value
 }
 
+/** Настройки из последней загрузки (бот загружает их на каждое обновление) — для синхронных мест вроде меню. */
+export function cachedSettings(): AppSettings {
+  return cache?.value.settings ?? defaultSettings()
+}
+
 export async function getSettings(db: Db): Promise<AppSettings> {
   return (await getConfig(db)).settings
 }

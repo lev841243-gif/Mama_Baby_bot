@@ -11,7 +11,8 @@
     "./consent-types": "./src/consent-types.ts",
     "./content": "./src/content.ts",
     "./age": "./src/age.ts",
-    "./feed-types": "./src/feed-types.ts"
+    "./feed-types": "./src/feed-types.ts",
+    "./calendar-parse": "./src/calendar-parse.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",

@@ -2,8 +2,8 @@
 // Запуск: TEST_DATABASE_URL=postgres://…localhost:55432/… corepack pnpm -F @mama/worker test
 import assert from 'node:assert/strict'
 import { after, before, beforeEach, test } from 'node:test'
-import { DEFAULT_TEXTS as T, getConsentState, grantConsents } from '@mama/shared'
-import { createDb, feedSettings, users, type Db } from '@mama/shared/db'
+import { DEFAULT_TEXTS as T, fmt, getConsentState, grantConsents, listSkills, resetSettingsCache, setAppSettings, todayFor } from '@mama/shared'
+import { appSettings, createDb, feedSettings, skillCalendar, users, type Db } from '@mama/shared/db'
 import { eq } from 'drizzle-orm'
 import { Bot } from 'grammy'
 import type { Update } from 'grammy/types'
@@ -19,6 +19,9 @@ let db: Db
 let bot: Bot
 let calls: { method: string; payload: Record<string, unknown> }[] = []
 let updateId = 1
+// Что «распознаёт» тестовый сервис речи и сколько раз качали голосовое.
+let heard = ''
+let downloads = 0
 
 function sentTexts() {
   return calls.filter((c) => c.method === 'sendMessage' || c.method === 'editMessageText').map((c) => String(c.payload.text))
@@ -66,7 +69,18 @@ before(async () => {
   // Лимит поиска в памяти вместо Redis.
   const counters = new Map<string, number>()
   const redis = { incr: async (k: string) => counters.set(k, (counters.get(k) ?? 0) + 1).get(k)!, expire: async () => 1 as const }
-  setupBot(bot, { db, log: pino({ level: 'silent' }), publicUrl: 'https://example.test', channelUrl: 'https://t.me/x', redis: redis as never })
+  setupBot(bot, {
+    db,
+    log: pino({ level: 'silent' }),
+    publicUrl: 'https://example.test',
+    channelUrl: 'https://t.me/x',
+    redis: redis as never,
+    speech: { id: 'test', transcribe: async () => heard },
+    downloadFile: async () => {
+      downloads++
+      return Buffer.from('ogg')
+    },
+  })
 })
 
 beforeEach(async () => {
@@ -327,4 +341,75 @@ test('закрытый режим: не из списка доступа — «�
       if (!(e instanceof Error && e.message.includes('Rollback'))) throw e
     })
   resetSettingsCache()
+})
+
+async function voice(duration = 5) {
+  await bot.handleUpdate({
+    update_id: updateId++,
+    message: { message_id: updateId, date: 0, chat, from, voice: { file_id: 'v', file_unique_id: 'v', duration } },
+  } as Update)
+}
+
+test('календарь в боте: согласие, голос → «Записала» → «Верно»; «красное слово», длинное голосовое (приёмка 21, 22, 24, 25)', { skip: !url }, async () => {
+  const [prev] = await db.select().from(appSettings).where(eq(appSettings.key, 'calendarEnabled'))
+  await setAppSettings(db, { calendarEnabled: true })
+  try {
+    await grantConsents(db, ME, ['pd'], { isTester: true })
+    const [user] = await db.select().from(users).where(eq(users.tgId, ME))
+    const rows = () => db.select().from(skillCalendar).where(eq(skillCalendar.userId, user!.id))
+
+    // Без согласия на календарь голосовое не уходит в распознавание — предложение включить (07 §6).
+    downloads = 0
+    await voice()
+    assert.equal(downloads, 0)
+    assert.deepEqual(buttons(), ['cal:on', 'cal:later'])
+
+    await press('cal:on')
+    assert.ok((await getConsentState(db, ME)).granted.calendar, 'согласие на календарь записано')
+    const year = new Date().getFullYear()
+    assert.ok(buttons().includes(`age:y:${year}:c`), 'сначала месяц и год рождения')
+    await press(`age:m:${year}:1:c`)
+    assert.equal(sentTexts().at(-1), T.calAskVoice)
+
+    heard = 'Сегодня пополз, но пока неуверенно'
+    calls = []
+    await voice()
+    const crawl = (await listSkills(db)).find((x) => x.name === 'Ползание')!
+    const today = await todayFor(db, ME)
+    const text = sentTexts().at(-1)!
+    assert.ok(text.includes(fmt(T.calHeard, { text: heard })), 'распознанный текст показан до действия')
+    assert.ok(text.includes('ползание — старт навыка'))
+    const ok = `cal:ok:${crawl.id}:s:${today.replace(/-/g, '')}`
+    assert.deepEqual(buttons(), [ok, ok.replace('cal:ok', 'cal:fx'), 'cal:no'])
+    assert.equal((await rows()).length, 0, 'без «Верно» ничего не сохранено')
+
+    await press(ok)
+    const saved = await rows()
+    assert.deepEqual(saved.map((r) => [r.skillId, r.day, r.status]), [[crawl.id, today, 'start']])
+
+    // «Красное слово» голосом — экстренный текст, записи нет.
+    heard = 'Упал с дивана и плачет'
+    calls = []
+    await voice()
+    assert.ok(sentTexts().at(-1)!.includes('103'))
+    assert.equal((await rows()).length, 1)
+
+    // Длиннее минуты — не скачиваем.
+    downloads = 0
+    await voice(61)
+    assert.equal(sentTexts().at(-1), T.voiceTooLong)
+    assert.equal(downloads, 0)
+
+    // Кнопками: навык → статус → дата → подтверждение; «Отмена» ничего не пишет.
+    await press('cal:v:-:-:-')
+    await press(`cal:v:${crawl.id}:-:-`)
+    await press(`cal:v:${crawl.id}:f:-`)
+    assert.equal(sentTexts().at(-1), T.calAskDate)
+    await press('cal:no')
+    assert.equal((await rows()).length, 1)
+  } finally {
+    if (prev) await setAppSettings(db, { calendarEnabled: prev.value })
+    else await db.delete(appSettings).where(eq(appSettings.key, 'calendarEnabled'))
+    resetSettingsCache()
+  }
 })

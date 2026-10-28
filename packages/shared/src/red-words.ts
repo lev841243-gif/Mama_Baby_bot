@@ -57,6 +57,9 @@ export function normalizeText(s: string): string[] {
 
 const stem = (w: string) => stemmer.stem(w)
 
+/** Основы слов текста (русский стеммер) — и для «красных слов», и для разбора записи календаря. */
+export const stemTokens = (s: string) => normalizeText(s).map(stem)
+
 // Частые безопасные слова, которые иначе ловились бы по началу: «кроватка» ≠ «кровь».
 const SAFE_PREFIXES = ['кроват']
 

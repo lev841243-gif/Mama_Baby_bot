@@ -8,6 +8,8 @@ import {
   deleteUserData,
   fmt,
   getActiveSubscriptionUntil,
+  cachedSettings,
+  fakeSpeechProvider,
   getChildBirth,
   bumpWantedTopic,
   findRedWord,
@@ -25,12 +27,14 @@ import {
   setChildBirth,
   takeSearchQuota,
   touchUser,
+  type SpeechProvider,
 } from '@mama/shared'
 import type { Db } from '@mama/shared/db'
 import { Bot, InlineKeyboard, type Context } from 'grammy'
 import type { Message } from 'grammy/types'
 import type { Redis } from 'ioredis'
 import type { Logger } from 'pino'
+import { setupCalendarBot } from './calendar-bot'
 import { setupFeedBot } from './feed-bot'
 
 export type BotDeps = {
@@ -40,6 +44,10 @@ export type BotDeps = {
   channelUrl: string
   /** Счётчик лимита поиска (ТЗ 10.1). */
   redis: Pick<Redis, 'incr' | 'expire'>
+  /** Распознавание голосовых для календаря (ТЗ 10.2). TODO(Р4): пока фейковый провайдер. */
+  speech?: SpeechProvider
+  /** Скачать голосовое в память (без записи на диск). */
+  downloadFile?: (fileId: string) => Promise<Buffer>
   /** Канал автора, где бот — администратор (ТЗ 9.9): новые и изменённые посты уходят в админку. */
   channel?: {
     id: number
@@ -50,15 +58,17 @@ export type BotDeps = {
 
 const html = { parse_mode: 'HTML' as const, link_preview_options: { is_disabled: true } }
 
-export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, channel }: BotDeps) {
+export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, channel, speech = fakeSpeechProvider, downloadFile }: BotDeps) {
   const vars = { siteUrl: publicUrl, channelUrl }
   const appUrl = (screen?: string) => `${publicUrl}/app${screen ? `?screen=${screen}` : ''}`
 
   const openApp = (text: string = T.openAppButton) => new InlineKeyboard().webApp(text, appUrl())
   const mainMenu = () =>
     // В меню только то, что работает (ТЗ 6.2): «Записать навык» — с включённым календарём.
-    new InlineKeyboard()
-      .webApp(T.openAppButton, appUrl())
+    (cachedSettings().calendarEnabled
+      ? new InlineKeyboard().webApp(T.openAppButton, appUrl()).row().text(T.calButton, 'cal')
+      : new InlineKeyboard().webApp(T.openAppButton, appUrl())
+    )
       .row()
       .text(T.feedButton, 'feed')
       .row()
@@ -224,18 +234,18 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
   bot.callbackQuery('settings', showSettings)
 
   // 8. Возраст ребёнка: месяц и год кнопками, только по желанию или когда нужен ленте (ТЗ 6.3).
-  // Суффикс `:f` — выбор идёт из подписки на ленту, после месяца она продолжается.
-  const ageYearKeyboard = async (next?: 'feed', tgId?: number) => {
-    const suffix = next === 'feed' ? ':f' : ''
+  // Суффикс `:f` / `:c` — выбор идёт из подписки на ленту или включения календаря, после месяца они продолжаются.
+  const ageYearKeyboard = async (next?: 'feed' | 'calendar', tgId?: number) => {
+    const suffix = next === 'feed' ? ':f' : next === 'calendar' ? ':c' : ''
     const kb = new InlineKeyboard()
     for (const y of birthYearOptions()) kb.text(String(y), `age:y:${y}${suffix}`)
     kb.row()
     if (!next && tgId && (await getChildBirth(db, tgId))) kb.text(T.ageClearButton, 'age:clear').row()
-    return kb.text(T.backButton, next === 'feed' ? 'feed' : 'settings')
+    return kb.text(T.backButton, next === 'feed' ? 'feed' : next === 'calendar' ? 'menu' : 'settings')
   }
   bot.callbackQuery('age', async (ctx) => show(ctx, T.ageAskYear, await ageYearKeyboard(undefined, ctx.from.id)))
 
-  bot.callbackQuery(/^age:y:(\d{4})(:f)?$/, async (ctx) => {
+  bot.callbackQuery(/^age:y:(\d{4})(:[fc])?$/, async (ctx) => {
     const year = Number(ctx.match[1])
     const suffix = ctx.match[2] ?? ''
     const kb = new InlineKeyboard()
@@ -244,16 +254,17 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
       kb.text(name, `age:m:${year}:${i + 1}${suffix}`)
       if (i % 3 === 2) kb.row()
     })
-    kb.row().text(T.backButton, suffix ? 'feed:sub' : 'age')
+    kb.row().text(T.backButton, suffix === ':f' ? 'feed:sub' : suffix === ':c' ? 'cal' : 'age')
     await show(ctx, T.ageAskMonth, kb)
   })
 
-  bot.callbackQuery(/^age:m:(\d{4}):(\d{1,2})(:f)?$/, async (ctx) => {
+  bot.callbackQuery(/^age:m:(\d{4}):(\d{1,2})(:[fc])?$/, async (ctx) => {
     const year = Number(ctx.match[1])
     const month = Number(ctx.match[2])
     if (!isValidBirth(year, month)) return ctx.answerCallbackQuery()
     await setChildBirth(db, ctx.from.id, { year, month })
-    if (ctx.match[3]) return feed.startSubscribe(ctx)
+    if (ctx.match[3] === ':f') return feed.startSubscribe(ctx)
+    if (ctx.match[3] === ':c') return calendar.start(ctx)
     let text = fmt(T.ageSaved, { month: MONTHS_RU[month - 1]!, year: String(year) })
     if (ageInMonths(year, month) < 3) text += `\n\n${T.ageTooYoung}`
     await show(ctx, text, new InlineKeyboard().text(T.backButton, 'settings'))
@@ -267,8 +278,19 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
   // 8а. Лента (ТЗ 7).
   const feed = setupFeedBot(bot, { db, log, publicUrl, show, mainMenu, ageYearKeyboard: (next) => ageYearKeyboard(next) })
 
+  // 8б. Календарь навыков и голос (ТЗ 10.4).
+  const calendar = setupCalendarBot(bot, {
+    db,
+    log,
+    publicUrl,
+    show,
+    mainMenu,
+    ageYearKeyboard: (next) => ageYearKeyboard(next),
+    speech,
+    downloadFile: downloadFile ?? (() => Promise.reject(new Error('downloadFile not configured'))),
+  })
+
   // 9. Свободный текст — поиск по материалам автора (ТЗ 6.4, 10.1); «красные слова» уже проверены выше.
-  bot.on('message:voice', (ctx) => ctx.reply(T.voiceNotSupported, { reply_markup: openApp() }))
   bot.on('message:text', async (ctx) => {
     if (ctx.message.text.startsWith('/')) return ctx.reply(T.mainMenu, { reply_markup: mainMenu() })
     if (!(await takeSearchQuota(redis, ctx.from.id))) return ctx.reply(T.searchLimit, { reply_markup: openApp() })

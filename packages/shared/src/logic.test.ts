@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { compareVersions, isConsentVersionValid, visibleConsentItems } from './consents'
 import { ageInMonths, ageSection, isValidBirth } from './profile'
 import { monthsLabel } from './texts'
+import { findDay, findSkill, findStatus, isValidCalendarDay, parseCalendarText } from './calendar-parse'
 import { feedDecision, feedWeekdays, isQuietHour, localParts, type FeedCandidate } from './feed-types'
 
 const versions = {
@@ -203,4 +204,28 @@ test('лента: слот, тихие часы, дни, пауза, 3 и 18 м�
 test('лента: тихие часы 22:00–8:00 сильнее любых настроек', () => {
   for (let h = 0; h < 24; h++) assert.equal(isQuietHour(h), h >= 22 || h < 8)
   assert.equal(localParts(new Date('2026-11-02T21:30:00Z'), 'Europe/Moscow').hour, 0)
+})
+
+test('календарь: разбор фразы правилами — дата, навык, статус (ТЗ 10.4)', () => {
+  const skills = [
+    { id: 6, name: 'Ползание', synonyms: [] },
+    { id: 7, name: 'Сел', synonyms: [] },
+    { id: 10, name: 'Пошёл уверенно', synonyms: [] },
+    { id: 1, name: 'Держит голову', synonyms: [] },
+    { id: 13, name: 'Хлопает', synonyms: ['хлопает в ладоши'] },
+  ]
+  const today = '2026-11-02' // понедельник
+  assert.deepEqual(parseCalendarText('Сегодня пополз, но пока неуверенно', skills, today), { skillId: 6, status: 'start', day: today })
+  assert.deepEqual(parseCalendarText('15 ноября уже уверенно ползает', skills, today), { skillId: 6, status: 'formed', day: '2025-11-15' })
+  assert.deepEqual(parseCalendarText('вчера села сама', skills, today), { skillId: 7, status: undefined, day: '2026-11-01' })
+  assert.equal(findDay('в пятницу пошла', today), '2026-10-30')
+  assert.equal(findDay('позавчера', today), '2026-10-31')
+  assert.equal(findDay('3.10 держит головку', today), '2026-10-03')
+  assert.equal(findSkill('держит головку хорошо', skills), 1)
+  assert.equal(findSkill('хлопает в ладоши', skills), 13, 'фразы автора из админки')
+  assert.equal(findSkill('просто гуляли', skills), undefined)
+  assert.equal(findStatus('начал, но уверенно'), undefined, 'противоречие — спросим кнопками')
+  assert.equal(isValidCalendarDay('2026-11-03', today), false, 'не в будущем')
+  assert.equal(isValidCalendarDay('2026-04-30', today, { year: 2026, month: 5 }), false, 'не раньше рождения')
+  assert.equal(isValidCalendarDay('2026-05-01', today, { year: 2026, month: 5 }), true)
 })
