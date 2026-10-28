@@ -274,6 +274,7 @@ export const DEFAULT_TEXTS = {
   calBirthChanged: 'В календаре есть записи. Начать календарь заново для этой даты рождения или сохранить старые записи?',
   calRestart: 'Начать заново',
   calKeep: 'Сохранить записи',
+  calCleared: 'Записи календаря удалены. Остальные данные остались.',
 } as const
 
 export type TextKey = keyof typeof DEFAULT_TEXTS
@@ -567,6 +568,7 @@ export const TEXT_GROUPS: { label: string; texts: Partial<Record<TextKey, string
       calBirthChanged: 'Смена даты рождения при записях',
       calRestart: 'Кнопка «Начать заново»',
       calKeep: 'Кнопка «Сохранить записи»',
+      calCleared: 'Записи календаря удалены (бот)',
     },
   },
 ]

@@ -62,6 +62,7 @@ export async function SummaryView(props: AdminViewServerProps) {
           ['Подписаны на ленту', `${s.feed.total} (${share}%)`],
           ['Отписались от ленты за 30 дней', s.feed.unsubscribed30],
           ['Активных подписок', s.subscriptionsActive],
+          ['Включили календарь навыков', s.calendarsActive],
         ]}
       />
       <Table head={['Лента: возраст малыша', 'Подписаны']} empty="Пока никто не подписан." rows={s.feed.bySection.map((r) => [r.section, r.count])} />

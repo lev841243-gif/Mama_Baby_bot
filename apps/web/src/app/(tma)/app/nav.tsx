@@ -17,6 +17,7 @@ export type Screen =
   | { name: 'settings' }
   | { name: 'consents' }
   | { name: 'feed' }
+  | { name: 'calendar' }
 
 export type Nav = {
   push: (s: Screen) => void
@@ -43,6 +44,7 @@ export function initialStack(start: string | null): Screen[] {
   if (screen === 'consents') return [home, { name: 'settings' }, { name: 'consents' }]
   if (screen === 'settings') return [home, { name: 'settings' }]
   if (screen === 'feed') return [home, { name: 'settings' }, { name: 'feed' }]
+  if (screen === 'calendar') return [home, { name: 'calendar' }]
   const m = Number(q.get('m') ?? (start?.startsWith('m') ? start.slice(1) : NaN))
   if (Number.isSafeInteger(m) && m > 0) return [home, { name: 'material', id: m }]
   const s = start?.startsWith('s') ? start.slice(1) : null

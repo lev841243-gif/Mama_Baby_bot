@@ -19,6 +19,7 @@ import {
   getSettings,
   hashTgId,
   isValidBirth,
+  listCalendar,
   listTopics,
   monthsLabel,
   processPayment,
@@ -262,9 +263,14 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
     const year = Number(ctx.match[1])
     const month = Number(ctx.match[2])
     if (!isValidBirth(year, month)) return ctx.answerCallbackQuery()
+    const before = await getChildBirth(db, ctx.from.id)
     await setChildBirth(db, ctx.from.id, { year, month })
     if (ctx.match[3] === ':f') return feed.startSubscribe(ctx)
     if (ctx.match[3] === ':c') return calendar.start(ctx)
+    // Второй ребёнок или исправленная дата при записях календаря — начать заново или сохранить (ТЗ 5).
+    if (before && (before.year !== year || before.month !== month) && (await listCalendar(db, ctx.from.id)).length > 0) {
+      return show(ctx, T.calBirthChanged, new InlineKeyboard().text(T.calRestart, 'cal:restart').text(T.calKeep, 'settings'))
+    }
     let text = fmt(T.ageSaved, { month: MONTHS_RU[month - 1]!, year: String(year) })
     if (ageInMonths(year, month) < 3) text += `\n\n${T.ageTooYoung}`
     await show(ctx, text, new InlineKeyboard().text(T.backButton, 'settings'))

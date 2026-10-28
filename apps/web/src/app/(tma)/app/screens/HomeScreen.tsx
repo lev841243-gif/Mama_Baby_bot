@@ -68,6 +68,7 @@ export function HomeScreen() {
       )}
 
       <Section>
+        {session.calendar && <Cell onClick={() => nav.push({ name: 'calendar' })}>{t.calTitle}</Cell>}
         <Cell onClick={() => nav.push({ name: 'calm' })}>{t.calmMomButton}</Cell>
         <Cell onClick={() => nav.push({ name: 'music' })}>{t.musicButton}</Cell>
         <Cell onClick={() => nav.push({ name: 'useful' })}>{t.usefulButton}</Cell>

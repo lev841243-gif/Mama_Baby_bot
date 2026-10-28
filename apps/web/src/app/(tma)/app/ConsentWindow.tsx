@@ -131,7 +131,7 @@ export function ConsentWindow({ session, initData, mode, onDeleted }: Props) {
       {revokingItem && (
         <Confirm
           text={t.consentRevokeItem.replace('{title}', revokingItem.title)}
-          note={revokingItem.type === 'pd' ? t.consentRevokeItemPd : undefined}
+          note={revokingItem.type === 'pd' ? t.consentRevokeItemPd : revokingItem.type === 'calendar' ? t.calOffConfirm : undefined}
           okText={t.consentRevokeOk}
           cancelText={t.revokeNo}
           loading={revoke.isPending}

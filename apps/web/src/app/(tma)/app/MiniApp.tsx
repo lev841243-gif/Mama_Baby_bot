@@ -20,6 +20,7 @@ import { BetaBanner } from './BetaBanner'
 import { ConsentWindow } from './ConsentWindow'
 import { AppCtx, type Nav, type Screen, initialStack, useApp } from './nav'
 import { BookmarksScreen } from './screens/BookmarksScreen'
+import { CalendarScreen } from './screens/CalendarScreen'
 import { CalmScreen } from './screens/CalmScreen'
 import { FeedScreen } from './screens/FeedScreen'
 import { HomeScreen } from './screens/HomeScreen'
@@ -265,6 +266,8 @@ function ScreenView({
       return <SubscriptionScreen />
     case 'settings':
       return <SettingsScreen onDeleted={onDeleted} fontLarge={fontLarge} setFontLarge={setFontLarge} />
+    case 'calendar':
+      return <CalendarScreen />
     case 'feed':
       return <FeedScreen />
     case 'consents':

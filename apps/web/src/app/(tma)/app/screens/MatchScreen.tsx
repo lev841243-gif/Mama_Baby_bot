@@ -1,9 +1,10 @@
 'use client'
 import { matchExercises, sectionsForRange } from '@mama/shared/content'
 import { Button, Cell, Checkbox, List, Section } from '@telegram-apps/telegram-ui'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import type { MatchPayload } from '@/lib/tma-types'
+import { fmt } from '@mama/shared/texts'
+import type { CalendarPayload, MatchPayload } from '@/lib/tma-types'
 import { api } from '../api'
 import { useApp } from '../nav'
 import { CardCell, Disclaimer, Loading, Message } from '../ui'
@@ -11,6 +12,7 @@ import { CardCell, Disclaimer, Loading, Message } from '../ui'
 /**
  * «Что уже умеет малыш?» (ТЗ 8.3). Отметки живут только в этом экране: на сервер не уходят и нигде не
  * сохраняются (ТЗ 11.4, приёмка 12). Без оценок и сравнений — только упражнения автора (правило 3.4).
+ * Исключение — включён календарь: отметки можно записать в него отдельной кнопкой (ТЗ 8.3, 10.4).
  */
 export function MatchScreen() {
   const { nav, initData, session } = useApp()
@@ -18,6 +20,10 @@ export function MatchScreen() {
   const q = useQuery({ queryKey: ['match'], queryFn: () => api<MatchPayload>('/api/tma/match', initData) })
   const [known, setKnown] = useState<Set<number>>(() => new Set())
   const [shown, setShown] = useState(false)
+  const calendarOn = session.calendar && session.consent.granted.includes('calendar')
+  const toCalendar = useMutation({
+    mutationFn: () => api<CalendarPayload>('/api/tma/calendar', initData, { action: 'match', skillIds: [...known] }),
+  })
 
   const result = useMemo(() => (q.data ? matchExercises(q.data.exercises, known) : []), [q.data, known])
 
@@ -31,6 +37,7 @@ export function MatchScreen() {
 
   const toggle = (id: number) => {
     setShown(false)
+    toCalendar.reset()
     setKnown((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -55,6 +62,15 @@ export function MatchScreen() {
           {t.matchShow}
         </Button>
       </div>
+      {calendarOn && known.size > 0 && (
+        <Section footer={toCalendar.data ? fmt(t.calMatchSaved, { n: String(toCalendar.data.saved ?? 0) }) : t.calMatchSaveNote}>
+          <div className="px-4 py-2">
+            <Button size="m" mode="bezeled" stretched loading={toCalendar.isPending} disabled={toCalendar.isSuccess} onClick={() => toCalendar.mutate()}>
+              {t.calMatchSave}
+            </Button>
+          </div>
+        </Section>
+      )}
       {shown && (
         <Section header={result.length ? t.matchResult : t.matchEmpty}>
           {(result.length ? result : fallback).map((c) => (

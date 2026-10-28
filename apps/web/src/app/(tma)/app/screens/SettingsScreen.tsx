@@ -32,6 +32,7 @@ export function SettingsScreen({ onDeleted, fontLarge, setFontLarge }: { onDelet
       <AgeSection />
       <Section>
         <Cell onClick={() => nav.push({ name: 'feed' })}>{t.feedButton}</Cell>
+        {session.calendar && <Cell onClick={() => nav.push({ name: 'calendar' })}>{t.calTitle}</Cell>}
         <Cell onClick={() => nav.push({ name: 'bookmarks' })}>{t.bookmarksTitle}</Cell>
         <Cell onClick={() => nav.push({ name: 'subscription' })}>{t.subscriptionButton}</Cell>
         <Cell Component="label" after={<Switch checked={fontLarge} onChange={(e) => setFontLarge(e.target.checked)} />}>

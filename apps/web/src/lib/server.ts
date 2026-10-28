@@ -40,6 +40,7 @@ export async function buildSession(state: ConsentState): Promise<SessionPayload>
   return {
     status: state.pdValid ? 'ready' : 'needConsent',
     beta: settings.betaBanner,
+    calendar: settings.calendarEnabled,
     consent: {
       items: visibleConsentItems(settings).map(({ type, required, title, hint, docPath, inAcceptAll }) => ({
         type,

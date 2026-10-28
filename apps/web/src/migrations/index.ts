@@ -11,6 +11,7 @@ import * as migration_20261028_011917_step9_channel from './20261028_011917_step
 import * as migration_20261028_063943_step2_settings from './20261028_063943_step2_settings';
 import * as migration_20261028_064707_step2_feed_texts from './20261028_064707_step2_feed_texts';
 import * as migration_20261028_070121_step2_calendar from './20261028_070121_step2_calendar';
+import * as migration_20261028_070655_step2_calendar_cleared from './20261028_070655_step2_calendar_cleared';
 
 export const migrations = [
   {
@@ -76,6 +77,11 @@ export const migrations = [
   {
     up: migration_20261028_070121_step2_calendar.up,
     down: migration_20261028_070121_step2_calendar.down,
-    name: '20261028_070121_step2_calendar'
+    name: '20261028_070121_step2_calendar',
+  },
+  {
+    up: migration_20261028_070655_step2_calendar_cleared.up,
+    down: migration_20261028_070655_step2_calendar_cleared.down,
+    name: '20261028_070655_step2_calendar_cleared'
   },
 ];

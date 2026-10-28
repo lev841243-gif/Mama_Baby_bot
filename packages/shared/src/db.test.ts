@@ -5,9 +5,20 @@ import { after, before, test } from 'node:test'
 import { eq, inArray, sql } from 'drizzle-orm'
 import { deleteUserData, getConsentState, grantConsents, revokeConsent } from './consents'
 import { createDb, type Db } from './db/client'
-import { consents, feedSent, feedSettings, payments, users } from './db/schema'
+import { consents, feedSent, feedSettings, payments, skillCalendar, users } from './db/schema'
 import { getChildBirth, setChildBirth } from './profile'
 import { runFeedTick, subscribeFeed, type FeedSender } from './feed'
+import {
+  addCalendarEntry,
+  clearCalendar,
+  deleteCalendarEntry,
+  disableCalendar,
+  enableCalendar,
+  listCalendar,
+  listSkills,
+  updateCalendarEntry,
+} from './calendar'
+import { resetSettingsCache, setAppSettings } from './settings'
 
 const url = process.env.TEST_DATABASE_URL
 // Отрицательные ID в Telegram не бывают — тестовые записи не пересекутся с настоящими.
@@ -266,4 +277,48 @@ test('лента: по возрасту, без закрытого, без по�
     .catch((err: unknown) => {
       if (!(err instanceof Rollback)) throw err
     })
+})
+
+test('календарь: только с согласием, удаление отдельно от согласия, выключение удаляет записи (приёмка 24)', { skip: !url }, async () => {
+  const D = -1004
+  const E = -1005
+  class Rollback extends Error {}
+  await db
+    .transaction(async (txRaw) => {
+      const tx = txRaw as unknown as Db
+      await setAppSettings(tx, { calendarEnabled: true })
+      const skill = (await listSkills(tx))[0]!
+      const today = '2026-11-02'
+      await grantConsents(tx, D, ['pd'], { isTester: true })
+      await grantConsents(tx, E, ['pd', 'calendar'], { isTester: true })
+      await setChildBirth(tx, D, { year: 2026, month: 3 })
+      const entry = { skillId: skill.id, day: '2026-10-01', status: 'start' as const }
+
+      // Без отдельного согласия запись не пишется.
+      assert.equal(await addCalendarEntry(tx, D, entry, today), 'need_consent')
+      assert.equal(await enableCalendar(tx, D), true)
+      assert.equal(await addCalendarEntry(tx, D, entry, today), 'ok')
+      assert.equal(await addCalendarEntry(tx, D, { ...entry, day: '2026-11-03' }, today), 'bad_day', 'не в будущем')
+      assert.equal(await addCalendarEntry(tx, D, { ...entry, day: '2026-02-28' }, today), 'bad_day', 'не раньше рождения')
+      assert.equal(await addCalendarEntry(tx, E, entry, today), 'ok')
+
+      // Чужую запись не удалить и не изменить.
+      const [mine] = await listCalendar(tx, D)
+      assert.equal(await deleteCalendarEntry(tx, E, mine!.id), false)
+      assert.equal(await updateCalendarEntry(tx, E, mine!.id, { ...entry, status: 'formed' }, today), 'missing')
+
+      // «Удалить записи» — согласие остаётся; «Выключить» — согласие отозвано, записей нет.
+      assert.equal(await clearCalendar(tx, D), 1)
+      assert.ok((await getConsentState(tx, D)).granted.calendar)
+      await addCalendarEntry(tx, D, entry, today)
+      assert.equal(await disableCalendar(tx, D), 'revoked')
+      const [u] = await tx.select().from(users).where(eq(users.tgId, D))
+      assert.equal((await tx.select().from(skillCalendar).where(eq(skillCalendar.userId, u!.id))).length, 0)
+      assert.equal((await listCalendar(tx, E)).length, 1, 'у другой мамы всё на месте')
+      throw new Rollback()
+    })
+    .catch((err: unknown) => {
+      if (!(err instanceof Rollback)) throw err
+    })
+  resetSettingsCache()
 })

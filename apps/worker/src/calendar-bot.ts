@@ -6,6 +6,7 @@ import {
   T,
   addCalendarEntry,
   calendarAccess,
+  clearCalendar,
   enableCalendar,
   findRedWord,
   fmt,
@@ -125,6 +126,10 @@ export function setupCalendarBot(bot: Bot, h: Helpers) {
   })
   bot.callbackQuery('cal:later', (ctx) => show(ctx, T.calNotNowDone, mainMenu()))
   bot.callbackQuery('cal:no', (ctx) => show(ctx, T.calCancelled, mainMenu()))
+  bot.callbackQuery('cal:restart', async (ctx) => {
+    await clearCalendar(db, ctx.from.id)
+    await show(ctx, T.calCleared, mainMenu())
+  })
 
   bot.callbackQuery(new RegExp(`^cal:v:${DRAFT}$`), async (ctx) => {
     if ((await calendarAccess(db, ctx.from.id)).status !== 'ok') return start(ctx)

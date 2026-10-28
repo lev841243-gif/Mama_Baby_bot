@@ -4,6 +4,8 @@ import type { ClientTextKey } from '@mama/shared/texts'
 export type SessionPayload = {
   status: 'ready' | 'needConsent'
   beta: boolean
+  /** Календарь навыков запущен в проекте (этап 2): кнопки на главной, в настройках и подборе. */
+  calendar: boolean
   consent: {
     items: { type: ConsentType; required: boolean; title: string; hint: string; docPath: string; inAcceptAll: boolean }[]
     granted: ConsentType[]

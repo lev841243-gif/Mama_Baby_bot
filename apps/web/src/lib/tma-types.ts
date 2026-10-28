@@ -20,6 +20,22 @@ export type HomePayload = {
   feedSetup: boolean
 }
 
+export type CalendarEntryOut = { id: number; skillId: number; day: string; status: 'start' | 'formed' }
+
+export type CalendarPayload = {
+  /** Календарь запущен в проекте (этап 2, после Р23). */
+  enabled: boolean
+  /** Действует согласие на календарь. */
+  consent: boolean
+  skills: { id: number; name: string }[]
+  entries: CalendarEntryOut[]
+  birth: Birth | null
+  /** Сегодня по времени мамы (YYYY-MM-DD) — граница выбора даты. */
+  today: string
+  result: 'ok' | 'off' | 'need_consent' | 'bad_day' | 'bad_skill' | 'missing' | null
+  saved?: number
+}
+
 export type FeedPayload = {
   state: FeedStatePayload
   result: 'ok' | 'need_birth' | 'too_old' | null
