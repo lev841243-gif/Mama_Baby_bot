@@ -164,6 +164,38 @@ export const statMaterialDaily = app.table(
   (t) => [primaryKey({ columns: [t.materialId, t.day, t.kind] })],
 )
 
+/** Общие обезличенные счётчики по дням (ТЗ 11.2, 14): например, отписки от ленты. */
+export const statDaily = app.table(
+  'stat_daily',
+  {
+    kind: text('kind').notNull(),
+    day: date('day', { mode: 'string' }).notNull(),
+    count: integer('count').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.kind, t.day] })],
+)
+
+/**
+ * Календарь навыков (ТЗ 10.4) — только модель данных этапа 1, записи не собираются до решения юриста (Р23).
+ * Навык — id из справочника Payload; без текста и голоса: только дата, навык, статус.
+ */
+export const calendarStatus = app.enum('calendar_status', ['start', 'formed'])
+
+export const skillCalendar = app.table(
+  'skill_calendar',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    skillId: integer('skill_id').notNull(),
+    day: date('day', { mode: 'string' }).notNull(),
+    status: calendarStatus('status').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('skill_calendar_user_idx').on(t.userId, t.skillId)],
+)
+
 /** «Чего ищут, но нет» (ТЗ 11.2, Р2): тема из словаря тегов или «Другое» + дата. Текста запроса нет. */
 export const statWantedTopic = app.table(
   'stat_wanted_topic',

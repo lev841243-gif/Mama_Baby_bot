@@ -29,6 +29,13 @@
       "when": 1793149718106,
       "tag": "0003_step8_subscription",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793162771095,
+      "tag": "0004_step10_summary_calendar",
+      "breakpoints": true
     }
   ]
 }

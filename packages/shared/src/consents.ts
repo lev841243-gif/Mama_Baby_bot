@@ -1,7 +1,8 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db } from './db/client'
-import { consents, feedSent, users } from './db/schema'
+import { consents, feedSent, skillCalendar, users } from './db/schema'
+import { bumpDaily } from './summary'
 import { getConsentVersions } from './settings'
 import {
   CONSENT_TYPES,
@@ -171,8 +172,10 @@ export async function revokeConsent(db: Db, tgId: number, type: ConsentType): Pr
       .set({ revokedAt: new Date() })
       .where(and(eq(consents.userId, user.id), eq(consents.type, type), isNull(consents.revokedAt)))
       .returning({ id: consents.id })
-    // Данные только для ленты (ТЗ 11.1). Настройки ленты и записи календаря — этап 2.
+    // Данные, нужные только для этого согласия (ТЗ 11.1, 8.9): отправленное лентой, записи календаря.
     if (type === 'feed') await tx.delete(feedSent).where(eq(feedSent.userId, user.id))
+    if (type === 'calendar') await tx.delete(skillCalendar).where(eq(skillCalendar.userId, user.id))
+    if (type === 'feed' && closed.length > 0) await bumpDaily(tx as unknown as Db, 'feed_unsubscribed')
     return closed.length > 0 ? 'revoked' : 'none'
   })
 }
