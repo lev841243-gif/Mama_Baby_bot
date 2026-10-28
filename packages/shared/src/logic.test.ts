@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { compareVersions, isConsentVersionValid, visibleConsentItems } from './consents'
 import { ageInMonths, ageSection, isValidBirth } from './profile'
 import { monthsLabel } from './texts'
+import { feedDecision, feedWeekdays, isQuietHour, localParts, type FeedCandidate } from './feed-types'
 
 const versions = {
   pd: { required: '1.0' },
@@ -164,4 +165,42 @@ test('окно согласий: только работающие функци�
   assert.deepEqual(on.filter((i) => i.inAcceptAll).map((i) => i.type), ['pd', 'feed'])
   const all = visibleConsentItems({ calendarEnabled: true, authorNews: false, acceptAllSkipsOptional: false })
   assert.ok(all.every((i) => i.inAcceptAll))
+})
+
+test('лента: слот, тихие часы, дни, пауза, 3 и 18 месяцев (ТЗ 7, приёмка 27–28)', () => {
+  // Понедельник 02.11.2026, 10:00 по Москве = 07:00 UTC.
+  const mon10 = new Date('2026-11-02T07:00:00Z')
+  const base: FeedCandidate = {
+    slot: 'morning',
+    timezone: 'Europe/Moscow',
+    pausedUntil: null,
+    resumeWarnedAt: null,
+    farewellAt: null,
+    lastSentAt: null,
+    birthYear: 2026,
+    birthMonth: 5,
+  }
+  assert.deepEqual(feedWeekdays(2), [0, 3])
+  assert.equal(feedDecision(base, mon10, 2), 'announce')
+  // Не в свой слот и не в чужой пояс: во Владивостоке 10:00 МСК — это 17:00.
+  assert.equal(feedDecision({ ...base, slot: 'evening' }, mon10, 2), 'none')
+  assert.equal(feedDecision({ ...base, timezone: 'Asia/Vladivostok' }, mon10, 2), 'none')
+  // Вторник — не день отправки при 2 разах в неделю.
+  assert.equal(feedDecision(base, new Date('2026-11-03T07:00:00Z'), 2), 'none')
+  // Уже отправлено сегодня.
+  assert.equal(feedDecision({ ...base, lastSentAt: new Date('2026-11-02T06:10:00Z') }, mon10, 2), 'none')
+  // Младше 3 месяцев — ждём; 18 и больше — прощание один раз.
+  assert.equal(feedDecision({ ...base, birthYear: 2026, birthMonth: 9 }, mon10, 2), 'none')
+  assert.equal(feedDecision({ ...base, birthYear: 2025, birthMonth: 5 }, mon10, 2), 'farewell')
+  assert.equal(feedDecision({ ...base, birthYear: 2025, birthMonth: 5, farewellAt: mon10 }, mon10, 2), 'none')
+  // Пауза: молчим, накануне конца — предупреждение, после конца — снова анонс.
+  assert.equal(feedDecision({ ...base, pausedUntil: new Date('2026-11-06T12:00:00Z') }, mon10, 2), 'none')
+  assert.equal(feedDecision({ ...base, pausedUntil: new Date('2026-11-03T12:00:00Z') }, mon10, 2), 'resume-warning')
+  assert.equal(feedDecision({ ...base, pausedUntil: new Date('2026-11-03T12:00:00Z'), resumeWarnedAt: mon10 }, mon10, 2), 'none')
+  assert.equal(feedDecision({ ...base, pausedUntil: new Date('2026-11-01T12:00:00Z') }, mon10, 2), 'announce')
+})
+
+test('лента: тихие часы 22:00–8:00 сильнее любых настроек', () => {
+  for (let h = 0; h < 24; h++) assert.equal(isQuietHour(h), h >= 22 || h < 8)
+  assert.equal(localParts(new Date('2026-11-02T21:30:00Z'), 'Europe/Moscow').hour, 0)
 })

@@ -61,3 +61,78 @@ export type FeedStatePayload = {
   birth: { year: number; month: number } | null
   perWeek: number
 }
+
+// ---------- Расписание (ТЗ 7): всё считается по времени мамы ----------
+
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+/** Дата, час и день недели (0 — понедельник) в поясе мамы. */
+export function localParts(d: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+    weekday: 'short',
+  }).formatToParts(d)
+  const p = Object.fromEntries(parts.map((x) => [x.type, x.value]))
+  return {
+    date: `${p.year}-${p.month}-${p.day}`,
+    year: Number(p.year),
+    month: Number(p.month),
+    hour: Number(p.hour),
+    weekday: WEEKDAYS.indexOf(p.weekday!),
+  }
+}
+
+/** Следующий день после YYYY-MM-DD. */
+export function nextDate(date: string): string {
+  const d = new Date(`${date}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Дни отправки: N раз в неделю равномерно, начиная с понедельника. 2 — пн и чт (Р5). */
+export function feedWeekdays(perWeek: number): number[] {
+  const n = Math.min(7, Math.max(1, Math.round(perWeek)))
+  return Array.from({ length: n }, (_, i) => Math.floor((i * 7) / n))
+}
+
+export const isQuietHour = (hour: number) => hour >= QUIET_FROM || hour < QUIET_TO
+
+export type FeedCandidate = {
+  slot: FeedSlot
+  timezone: string
+  pausedUntil: Date | null
+  resumeWarnedAt: Date | null
+  farewellAt: Date | null
+  lastSentAt: Date | null
+  birthYear: number
+  birthMonth: number
+}
+
+export type FeedDecision = 'none' | 'announce' | 'farewell' | 'resume-warning'
+
+/**
+ * Что сейчас сделать для мамы (ТЗ 7, 5; приёмка 27–28). Всё — только в её слот и не в тихие часы.
+ * 18 месяцев — прощание один раз; пауза — предупреждение накануне конца; младше 3 — ждём;
+ * анонс — в день отправки и не чаще раза в день.
+ */
+export function feedDecision(c: FeedCandidate, now: Date, perWeek: number): FeedDecision {
+  const local = localParts(now, c.timezone)
+  const slot = FEED_SLOTS[c.slot]
+  if (isQuietHour(local.hour) || local.hour < slot.from || local.hour >= slot.to) return 'none'
+  // Возраст в полных месяцах по календарю мамы (ТЗ 5).
+  const months = (local.year - c.birthYear) * 12 + (local.month - c.birthMonth)
+  if (months >= FEED_MAX_MONTHS) return c.farewellAt ? 'none' : 'farewell'
+  if (c.pausedUntil && c.pausedUntil > now) {
+    const ends = localParts(c.pausedUntil, c.timezone).date
+    return !c.resumeWarnedAt && ends <= nextDate(local.date) ? 'resume-warning' : 'none'
+  }
+  if (months < FEED_MIN_MONTHS) return 'none'
+  if (!feedWeekdays(perWeek).includes(local.weekday)) return 'none'
+  if (c.lastSentAt && localParts(c.lastSentAt, c.timezone).date === local.date) return 'none'
+  return 'announce'
+}

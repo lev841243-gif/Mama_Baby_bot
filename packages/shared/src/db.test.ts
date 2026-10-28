@@ -2,11 +2,12 @@
 // Запуск: TEST_DATABASE_URL=postgres://…localhost:55432/… corepack pnpm -F @mama/shared test
 import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { deleteUserData, getConsentState, grantConsents, revokeConsent } from './consents'
 import { createDb, type Db } from './db/client'
 import { consents, feedSent, feedSettings, payments, users } from './db/schema'
 import { getChildBirth, setChildBirth } from './profile'
+import { runFeedTick, subscribeFeed, type FeedSender } from './feed'
 
 const url = process.env.TEST_DATABASE_URL
 // Отрицательные ID в Telegram не бывают — тестовые записи не пересекутся с настоящими.
@@ -196,4 +197,73 @@ test('модель календаря навыков: записи удаляю�
   await db.insert(skillCalendar).values({ userId: state.userId!, skillId: 1, day: '2026-10-01', status: 'formed' })
   await deleteUserData(db, A)
   assert.equal((await db.select().from(skillCalendar).where(eq(skillCalendar.userId, state.userId!))).length, 0)
+})
+
+test('лента: по возрасту, без закрытого, без повторов после сбоя, прощание в 18 месяцев (приёмка 16, 26–27)', { skip: !url }, async () => {
+  const C = -1003
+  class Rollback extends Error {}
+  // Всё в одной транзакции с откатом: тестовые материалы не видны админке, чужие материалы ленты на время выключены.
+  await db
+    .transaction(async (txRaw) => {
+      const tx = txRaw as unknown as Db
+      await tx.execute(sql`update payload.materials set in_feed = false`)
+      const mat = async (title: string, from: number, to: number, order: number, access = 'free', inFeed = true) => {
+        const [r] = await tx.execute<{ id: number }>(sql`
+          insert into payload.materials (title, type, age_from, age_to, "order", access, in_feed, _status, announce)
+          values (${title}, 'exercise', ${from}, ${to}, ${order}, ${access}, ${inFeed}, 'published', 'Анонс')
+          returning id`)
+        return Number(r!.id)
+      }
+      const m1 = await mat('Тест ленты 1', 4, 9, 1)
+      await mat('Тест ленты закрытый', 3, 6, 2, 'paid')
+      await mat('Тест ленты 6–9', 6, 9, 3)
+      await mat('Тест ленты не в ленте', 3, 9, 4, 'free', false)
+      await grantConsents(tx, C, ['pd'], { isTester: true })
+      await setChildBirth(tx, C, { year: 2026, month: 6 })
+      assert.equal(await subscribeFeed(tx, C, { slot: 'morning' }), 'ok')
+
+      const got: string[] = []
+      let fail = false
+      const sender: FeedSender = {
+        announce: async (_tg, m) => {
+          if (fail) throw new Error('telegram down')
+          got.push(m.title)
+          return 'ok'
+        },
+        text: async (_tg, kind) => {
+          got.push(kind)
+          return 'ok'
+        },
+      }
+      // Пн 02.11.2026 10:00 МСК: малышу 5 месяцев — первый по порядку материал, включающий 5.
+      await runFeedTick(tx, sender, new Date('2026-11-02T07:00:00Z'), [C])
+      await runFeedTick(tx, sender, new Date('2026-11-02T07:30:00Z'), [C])
+      assert.deepEqual(got, ['Тест ленты 1'], 'один анонс в день, «не в ленте» и 6–9 не пришли')
+      const { userId } = await getConsentState(tx, C)
+      assert.deepEqual((await tx.select().from(feedSent).where(eq(feedSent.userId, userId!))).map((r) => r.materialId), [m1])
+
+      // Чт: подходящих бесплатных больше нет, закрытый без подписки не уходит — лента молчит.
+      await runFeedTick(tx, sender, new Date('2026-11-05T07:00:00Z'), [C])
+      assert.deepEqual(got, ['Тест ленты 1'])
+
+      // Сбой Telegram: материал отмечен до отправки и после «перезапуска» не дублируется.
+      const m5 = await mat('Тест ленты 5', 3, 6, 5)
+      fail = true
+      const r = await runFeedTick(tx, sender, new Date('2026-11-09T07:00:00Z'), [C])
+      assert.equal(r.failed, 1)
+      fail = false
+      await runFeedTick(tx, sender, new Date('2026-11-12T07:00:00Z'), [C])
+      assert.deepEqual(got, ['Тест ленты 1'], 'после сбоя материал не пришёл второй раз')
+      assert.ok((await tx.select().from(feedSent).where(eq(feedSent.userId, userId!))).some((x) => x.materialId === m5))
+
+      // 18 месяцев: прощание один раз, дальше тишина.
+      await setChildBirth(tx, C, { year: 2025, month: 5 })
+      await runFeedTick(tx, sender, new Date('2026-11-16T07:00:00Z'), [C])
+      await runFeedTick(tx, sender, new Date('2026-11-19T07:00:00Z'), [C])
+      assert.deepEqual(got, ['Тест ленты 1', 'farewell'])
+      throw new Rollback()
+    })
+    .catch((err: unknown) => {
+      if (!(err instanceof Rollback)) throw err
+    })
 })

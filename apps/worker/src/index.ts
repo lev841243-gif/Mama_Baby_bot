@@ -7,6 +7,7 @@ import {
   WORKER_HEARTBEAT_KEY,
   alert,
   QUEUE_BOT,
+  QUEUE_FEED,
   T,
   createLogger,
   createRedis,
@@ -16,8 +17,10 @@ import {
   getFeedState,
   hashTgId,
   markReminded,
+  runFeedTick,
   setBotBlocked,
   type BotJob,
+  type FeedSender,
 } from '@mama/shared'
 import { getDb } from '@mama/shared/db'
 import { Queue, Worker } from 'bullmq'
@@ -101,16 +104,37 @@ bot.catch(({ error, ctx }) => {
 })
 
 /** Сообщение маме из очереди. Заблокировала бот — помечаем, рассылки ей не идут (ТЗ 13). */
-async function sendToUser(tgId: number, send: () => Promise<unknown>) {
+async function sendToUser(tgId: number, send: () => Promise<unknown>): Promise<'ok' | 'blocked'> {
   try {
     await send()
+    return 'ok'
   } catch (err) {
     if (err instanceof GrammyError && err.error_code === 403) {
       await setBotBlocked(db, tgId, true)
-      return
+      return 'blocked'
     }
     throw err
   }
+}
+
+/** Лента (ТЗ 7): анонс с картинкой по подписанной ссылке, кнопкой и подписью; прощание и предупреждение о паузе. */
+const feedSender: FeedSender = {
+  announce: (tgId, m) =>
+    sendToUser(tgId, () =>
+      sendAnnounce(
+        bot.api,
+        log,
+        publicUrl,
+        { tgId, materialId: m.id, title: m.title, announce: m.announce, photoUrl: m.photoPath ? publicUrl + m.photoPath : undefined },
+        { button: T.feedOpenButton, footer: T.medicalDisclaimer },
+      ),
+    ),
+  text: (tgId, kind) =>
+    sendToUser(tgId, () =>
+      kind === 'farewell'
+        ? bot.api.sendMessage(tgId, T.feedFarewell, { reply_markup: new InlineKeyboard().webApp(T.openAppButton, `${publicUrl}/app`) })
+        : bot.api.sendMessage(tgId, T.feedResumeTomorrow, { reply_markup: new InlineKeyboard().text(T.feedButton, 'feed') }),
+    ),
 }
 
 
@@ -200,6 +224,24 @@ aiWorker.on('failed', (job, err) => {
   void alert('job:ai', `ИИ: сборка статей из канала не выполнилась — ${String(err).slice(0, 200)}`)
 })
 
+// Очередь feed: проход ленты раз в 15 минут (ТЗ 7). По одной задаче — без гонок между проходами.
+const feedWorker = new Worker(
+  QUEUE_FEED,
+  async () => {
+    await getConfig(db)
+    const res = await runFeedTick(db, feedSender)
+    if (res.announces + res.farewells + res.warnings + res.blocked + res.failed > 0) log.info(res, 'feed tick')
+    // Сбой отправки — анонс этой маме пропущен (без дублей), исполнитель узнаёт (ТЗ 13).
+    if (res.failed > 0) void alert('job:feed', `Лента: не отправилось сообщений — ${res.failed}`)
+  },
+  { connection: createRedis(), concurrency: 1 },
+)
+feedWorker.on('failed', (job, err) => {
+  log.error({ err, job: job?.name }, 'feed job failed')
+  Sentry.captureException(err)
+  void alert('job:feed', `Лента: проход не выполнился — ${String(err).slice(0, 200)}`)
+})
+
 // Отметка «жив» для /api/health и Uptime Kuma.
 const beat = () => cache.set(WORKER_HEARTBEAT_KEY, String(Date.now()), 'EX', 600).catch(() => undefined)
 void beat()
@@ -227,6 +269,8 @@ async function syncDescription() {
 /** Повторяющиеся задачи: проверка подписок раз в час. Upsert не плодит дублей при перезапуске. */
 const scheduler = new Queue(QUEUE_BOT, { connection: createRedis() })
 await scheduler.upsertJobScheduler('subscriptions-tick', { every: 60 * 60 * 1000 }, { name: 'subscriptions-tick', data: {} })
+const feedScheduler = new Queue(QUEUE_FEED, { connection: createRedis() })
+await feedScheduler.upsertJobScheduler('feed-tick', { every: 15 * 60 * 1000 }, { name: 'feed-tick', data: {} })
 
 async function configureBot() {
   await bot.api.setMyCommands([
@@ -242,7 +286,7 @@ async function configureBot() {
 
 async function shutdown(signal: string) {
   log.info({ signal }, 'shutting down')
-  await Promise.allSettled([bot.stop(), worker.close(), aiWorker.close(), scheduler.close(), cache.quit()])
+  await Promise.allSettled([bot.stop(), worker.close(), aiWorker.close(), feedWorker.close(), scheduler.close(), feedScheduler.close(), cache.quit()])
   await db.$client.end({ timeout: 5 })
   process.exit(0)
 }

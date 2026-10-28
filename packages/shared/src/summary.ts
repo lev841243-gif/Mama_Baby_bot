@@ -22,6 +22,8 @@ export type Summary = {
   hard: { title: string; hard: number; done: number }[]
   wanted: { topic: string; count: number }[]
   sections: { section: string; count: number }[]
+  /** Материалы ленты на каждый месяц возраста 3–17 (ТЗ 7): где лента скоро замолчит. Только контент. */
+  feedMaterials: { month: number; free: number; paid: number }[]
 }
 
 const n = (v: unknown) => Number(v ?? 0)
@@ -70,8 +72,8 @@ export async function buildSummary(db: Db, days = 30): Promise<Summary> {
     select topic, sum(count) count from app.stat_wanted_topic where day >= ${since} group by topic order by count desc`)
 
   // Пустые и маленькие разделы: опубликованные материалы по разделам и «Спокойной маме».
-  const mats = await db.execute<{ type: string; age_from: number | null; age_to: number | null }>(sql`
-    select type, age_from, age_to from payload.materials where _status = 'published' and coalesce(archived, false) = false`)
+  const mats = await db.execute<{ type: string; age_from: number | null; age_to: number | null; in_feed: boolean | null; access: string }>(sql`
+    select type, age_from, age_to, in_feed, access from payload.materials where _status = 'published' and coalesce(archived, false) = false`)
   const sections = [
     ...AGE_SECTIONS.map((s) => ({
       section: `${s.from}–${s.to} мес.`,
@@ -89,5 +91,11 @@ export async function buildSummary(db: Db, days = 30): Promise<Summary> {
     hard: hard.map((r) => ({ title: r.title, hard: n(r.hard), done: n(r.done) })),
     wanted: wanted.map((r) => ({ topic: r.topic, count: n(r.count) })),
     sections,
+    feedMaterials: Array.from({ length: 15 }, (_, i) => i + 3).map((month) => {
+      const inFeed = mats.filter(
+        (m) => m.in_feed && (m.type === 'exercise' || m.type === 'article') && m.age_from !== null && m.age_to !== null && Number(m.age_from) <= month && Number(m.age_to) > month,
+      )
+      return { month, free: inFeed.filter((m) => m.access !== 'paid').length, paid: inFeed.filter((m) => m.access === 'paid').length }
+    }),
   }
 }

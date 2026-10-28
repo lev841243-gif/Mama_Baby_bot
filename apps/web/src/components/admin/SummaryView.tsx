@@ -89,6 +89,22 @@ export async function SummaryView(props: AdminViewServerProps) {
           r.count === 0 ? 'пустой' : r.count < settings.smallSectionMin ? `меньше ${settings.smallSectionMin}${settings.hideSmallSections ? ' — скрыт (Р11)' : ''}` : '',
         ])}
       />
+
+      <h3>Материалы для ленты по возрасту</h3>
+      <p>
+        Лента присылает материал, если его возраст включает возраст малыша, не чаще {settings.feedPerWeek} раз в неделю, и не
+        повторяет его. Материал «4–9» считается в каждом месяце с 4 по 8. Закрытые приходят только с подпиской.
+      </p>
+      <Table
+        head={['Возраст, мес.', 'Бесплатные', 'По подписке', '']}
+        empty=""
+        rows={s.feedMaterials.map((r) => [
+          r.month,
+          r.free,
+          r.paid,
+          r.free + r.paid === 0 ? 'лента молчит' : '',
+        ])}
+      />
     </AdminPage>
   )
 }
