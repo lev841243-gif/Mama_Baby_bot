@@ -95,3 +95,26 @@ test('ссылка Яндекс Музыки → виджет; неизвест�
   assert.equal(yandexMusicEmbed('https://music.yandex.ru/users/vera/playlists/1003'), 'https://music.yandex.ru/iframe/playlist/vera/1003')
   assert.equal(yandexMusicEmbed('https://music.yandex.ru/album/123'), null)
 })
+
+test('«красные слова»: формы, опечатки, фразы; обычные запросы не задевает (ТЗ 10.3, приёмка 20)', async () => {
+  const { findRedWord, DEFAULT_RED_WORDS: W } = await import('./red-words')
+  const red = [
+    'у малыша температура 39',
+    'ребёнок температурит второй день',
+    'высокой температуры нет, но вялый',
+    'темпиратура у сына',
+    'начались судорги',
+    'малыш не дышыт',
+    'сын упал с кровати',
+    'проглотил батарейку',
+    'отравился чем-то',
+    'рвет фонтаном',
+    'посинели губы',
+    'не хочу жить',
+    'ЖАР у ребёнка!!!',
+    'кашель с кровью',
+  ]
+  for (const q of red) assert.ok(findRedWord(q, W), `пропуск: ${q}`)
+  const calm = ['как уложить спать', 'прикорм кашей', 'какую крупу дать', 'научить ползать', 'кроватка для малыша', 'скоро ли сядет', 'сон днём', 'плачет перед сном']
+  for (const q of calm) assert.equal(findRedWord(q, W), null, `лишнее срабатывание: ${q}`)
+})

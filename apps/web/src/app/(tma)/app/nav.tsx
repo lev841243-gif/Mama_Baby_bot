@@ -12,6 +12,7 @@ export type Screen =
   | { name: 'match' }
   | { name: 'music' }
   | { name: 'useful' }
+  | { name: 'search' }
   | { name: 'settings' }
   | { name: 'consents' }
 

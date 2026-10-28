@@ -24,7 +24,9 @@ const bot = new Bot(token)
 bot.api.config.use(autoRetry({ maxRetryAttempts: 3, maxDelaySeconds: 10 }))
 bot.api.config.use(apiThrottler())
 
-const { mainMenu } = setupBot(bot, { db, log, publicUrl, channelUrl })
+// Отдельное соединение под кеш file_id и лимит поиска: соединение BullMQ занято блокирующими командами.
+const cache = createRedis()
+const { mainMenu } = setupBot(bot, { db, log, publicUrl, channelUrl, redis: cache })
 
 bot.catch(({ error, ctx }) => {
   log.error({ err: error, user: ctx.from ? hashTgId(ctx.from.id) : undefined }, 'bot update failed')
@@ -43,8 +45,6 @@ async function sendToUser(tgId: number, send: () => Promise<unknown>) {
   }
 }
 
-// Отдельное соединение под кеш file_id: соединение BullMQ занято блокирующими командами.
-const cache = createRedis()
 
 const worker = new Worker<BotJob['data'], void, BotJob['name']>(
   QUEUE_BOT,

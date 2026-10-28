@@ -38,3 +38,9 @@ export type MusicPayload = { playlists: Playlist[] }
 
 export type UsefulLink = { id: number; title: string; description: string; kind: string; url: string }
 export type UsefulPayload = { links: UsefulLink[] }
+
+export type SearchPayload =
+  | { status: 'ok'; results: Card[] }
+  | { status: 'nothing'; topics: string[] }
+  | { status: 'emergency'; text: string }
+  | { status: 'limit' }

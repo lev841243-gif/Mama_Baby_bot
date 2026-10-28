@@ -143,6 +143,17 @@ export const statMaterialDaily = app.table(
   (t) => [primaryKey({ columns: [t.materialId, t.day, t.kind] })],
 )
 
+/** «Чего ищут, но нет» (ТЗ 11.2, Р2): тема из словаря тегов или «Другое» + дата. Текста запроса нет. */
+export const statWantedTopic = app.table(
+  'stat_wanted_topic',
+  {
+    topic: text('topic').notNull(),
+    day: date('day', { mode: 'string' }).notNull(),
+    count: integer('count').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.topic, t.day] })],
+)
+
 /** Переключатели проекта: закрытый режим, плашка беты и т.п. (правятся из админки, шаг 3). */
 export const appSettings = app.table('app_settings', {
   key: text('key').primaryKey(),

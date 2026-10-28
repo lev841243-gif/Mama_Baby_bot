@@ -59,7 +59,6 @@ export const DEFAULT_TEXTS = {
   consentRevokeOk: 'Отозвать',
 
   // Свободный текст, голос и файлы (ТЗ 6.4)
-  searchSoon: 'Поиск по материалам скоро появится. Пока всё — в приложении.',
   voiceNotSupported: 'Голосовые пока не поддерживаются.',
   onlyTextAndVoice: 'Я понимаю только текст и голос.',
 
@@ -148,6 +147,18 @@ export const DEFAULT_TEXTS = {
   usefulTitle: 'Полезное',
   usefulNote: 'Ссылки ведут на сайты автора и партнёров. Условия покупки на них определяют их владельцы.',
   usefulEmpty: 'Ссылки скоро появятся.',
+
+  // Поиск (ТЗ 10.1, 6.4)
+  searchButton: 'Поиск',
+  searchTitle: 'Поиск по материалам',
+  searchPlaceholder: 'Например: сон, прикорм, ползание',
+  searchGo: 'Найти',
+  searchResults: 'Нашлось в материалах автора:',
+  searchNothing: 'Такой статьи пока нет.',
+  searchWant: 'Хочу материал на эту тему',
+  searchWantPick: 'Какая тема ближе? Автор увидит только тему, без вашего запроса.',
+  searchWantThanks: 'Спасибо! Автор увидит, что эту тему ищут.',
+  searchLimit: 'Сегодня вы уже много искали. Попробуйте завтра или загляните в разделы приложения.',
 } as const
 
 export type TextKey = keyof typeof DEFAULT_TEXTS
@@ -229,7 +240,6 @@ export const TEXT_GROUPS: { label: string; texts: Partial<Record<TextKey, string
   {
     label: 'Чат и материалы',
     texts: {
-      searchSoon: 'Поиск ещё не готов',
       voiceNotSupported: 'Голосовые не поддерживаются',
       onlyTextAndVoice: 'Пришли фото, файл или стикер',
       medicalDisclaimer: 'Подпись под каждым материалом',
@@ -309,6 +319,21 @@ export const TEXT_GROUPS: { label: string; texts: Partial<Record<TextKey, string
       usefulEmpty: 'Ссылок ещё нет',
     },
   },
+  {
+    label: 'Поиск',
+    texts: {
+      searchButton: 'Кнопка «Поиск»',
+      searchTitle: 'Поиск: заголовок',
+      searchPlaceholder: 'Поиск: подсказка в поле',
+      searchGo: 'Кнопка «Найти»',
+      searchResults: 'Поиск: заголовок результатов',
+      searchNothing: '«Такой статьи пока нет»',
+      searchWant: 'Кнопка «Хочу материал на эту тему»',
+      searchWantPick: 'Выбор темы',
+      searchWantThanks: 'После выбора темы',
+      searchLimit: 'Лимит 30 запросов в день',
+    },
+  },
 ]
 
 export const TEXT_LABELS = Object.assign({}, ...TEXT_GROUPS.map((g) => g.texts)) as Record<TextKey, string>
@@ -360,6 +385,8 @@ export const CLIENT_TEXT_KEYS = [
   'ageTooYoung',
   ...(Object.keys(TEXT_GROUPS.find((g) => g.label === 'Приложение: материалы')!.texts) as TextKey[]),
   ...(Object.keys(TEXT_GROUPS.find((g) => g.label === 'Приложение: практики, подбор, музыка')!.texts) as TextKey[]),
+  ...(Object.keys(TEXT_GROUPS.find((g) => g.label === 'Поиск')!.texts) as TextKey[]),
+  ...(Object.keys(TEXT_GROUPS.find((g) => g.label === 'Поиск')!.texts) as TextKey[]),
 ] as const satisfies readonly TextKey[]
 
 export type ClientTextKey = (typeof CLIENT_TEXT_KEYS)[number]

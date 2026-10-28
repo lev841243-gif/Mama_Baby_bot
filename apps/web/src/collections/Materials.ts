@@ -26,6 +26,29 @@ const stampPublished: CollectionBeforeChangeHook = ({ data, originalDoc }) => {
   return data
 }
 
+/** Текст для поиска по словам (ТЗ 10.1): название, теги, шаги, текст и блоки упражнения. */
+const buildSearchText: CollectionBeforeChangeHook = async ({ data, req }) => {
+  const tagIds = (Array.isArray(data.tags) ? data.tags : []).map((t: unknown) => (typeof t === 'object' && t ? (t as { id: number }).id : t))
+  const tags = tagIds.length
+    ? (await req.payload.find({ collection: 'tags', where: { id: { in: tagIds } }, depth: 0, limit: 10, pagination: false, req })).docs.map((t) => t.name)
+    : []
+  const steps = Array.isArray(data.steps) ? data.steps.map((s: { text?: string }) => s.text ?? '') : []
+  data.searchText = [
+    data.title,
+    ...tags,
+    data.announce,
+    ...steps,
+    lexicalPlainText(data.body),
+    data.howToKnow,
+    data.ifNotWorking,
+    data.easierVariant,
+    data.whenToSeeDoctor,
+  ]
+    .filter((x) => typeof x === 'string' && x.trim())
+    .join('\n')
+  return data
+}
+
 const computeMinutes: CollectionBeforeChangeHook = ({ data }) => {
   // Для статей и практик время чтения считается само, если автор не задала его (ТЗ 9.3).
   if (data.type !== 'exercise' && !data.minutesManual) {
@@ -54,7 +77,7 @@ export const Materials: CollectionConfig = {
     maxPerDoc: 100,
   },
   access: { read: isAdmin, create: canCreateDraft, update: canEditDraft, delete: never, readVersions: isAdmin },
-  hooks: { beforeChange: [stampPublished, computeMinutes], afterChange: [auditCollectionChange] },
+  hooks: { beforeChange: [stampPublished, computeMinutes, buildSearchText], afterChange: [auditCollectionChange] },
   fields: [
     { name: 'title', label: 'Название', type: 'text', required: true },
     {
@@ -285,6 +308,12 @@ export const Materials: CollectionConfig = {
       defaultValue: false,
       index: true,
       admin: { position: 'sidebar', description: 'Материал пропадает из списков и ленты.' },
+    },
+    {
+      // Собирается хуком для поиска (GIN-индекс в миграции), автору не показывается.
+      name: 'searchText',
+      type: 'textarea',
+      admin: { hidden: true },
     },
     {
       name: 'publishedAt',

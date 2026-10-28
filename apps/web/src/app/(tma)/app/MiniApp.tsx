@@ -25,6 +25,7 @@ import { HomeScreen } from './screens/HomeScreen'
 import { MatchScreen } from './screens/MatchScreen'
 import { MaterialScreen } from './screens/MaterialScreen'
 import { MusicScreen } from './screens/MusicScreen'
+import { SearchScreen } from './screens/SearchScreen'
 import { SectionScreen } from './screens/SectionScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { UsefulScreen } from './screens/UsefulScreen'
@@ -256,6 +257,8 @@ function ScreenView({
       return <MusicScreen />
     case 'useful':
       return <UsefulScreen />
+    case 'search':
+      return <SearchScreen />
     case 'settings':
       return <SettingsScreen onDeleted={onDeleted} fontLarge={fontLarge} setFontLarge={setFontLarge} />
     case 'consents':

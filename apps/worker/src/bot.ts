@@ -9,25 +9,39 @@ import {
   fmt,
   getActiveSubscriptionUntil,
   getChildBirth,
+  bumpWantedTopic,
+  findRedWord,
   getConfig,
   getConsentState,
+  getRedWords,
   getSettings,
   hashTgId,
   isValidBirth,
+  listTopics,
   monthsLabel,
   setBotBlocked,
+  searchMaterials,
   setChildBirth,
+  takeSearchQuota,
   touchUser,
 } from '@mama/shared'
 import type { Db } from '@mama/shared/db'
 import { Bot, InlineKeyboard, type Context } from 'grammy'
+import type { Redis } from 'ioredis'
 import type { Logger } from 'pino'
 
-export type BotDeps = { db: Db; log: Logger; publicUrl: string; channelUrl: string }
+export type BotDeps = {
+  db: Db
+  log: Logger
+  publicUrl: string
+  channelUrl: string
+  /** Счётчик лимита поиска (ТЗ 10.1). */
+  redis: Pick<Redis, 'incr' | 'expire'>
+}
 
 const html = { parse_mode: 'HTML' as const, link_preview_options: { is_disabled: true } }
 
-export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl }: BotDeps) {
+export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis }: BotDeps) {
   const vars = { siteUrl: publicUrl, channelUrl }
   const appUrl = (screen?: string) => `${publicUrl}/app${screen ? `?screen=${screen}` : ''}`
 
@@ -106,6 +120,16 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl }: BotDeps) 
     await ctx.reply((await betaPrefix()) + fmt(T.welcome, vars), { ...html, reply_markup: openApp(T.startButton) })
   })
 
+  // 5а. «Красные слова» — до любого действия, даже до согласия: экстренный текст ничего не записывает (ТЗ 10.3).
+  // Текст сообщения не логируется и не сохраняется (ТЗ 11.4).
+  bot.on('message:text', async (ctx, next) => {
+    if (ctx.message.text.startsWith('/')) return next()
+    const { words, emergencyText } = await getRedWords(db)
+    if (!findRedWord(ctx.message.text, words)) return next()
+    log.info('red word matched')
+    await ctx.reply(emergencyText, html)
+  })
+
   // 6. Гейт: без действующего основного согласия любое действие, включая старые кнопки, ведёт в окно согласий.
   bot.use(async (ctx, next) => {
     const tgId = ctx.from!.id
@@ -182,9 +206,36 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl }: BotDeps) 
     await show(ctx, T.ageCleared, new InlineKeyboard().text(T.backButton, 'settings'))
   })
 
-  // 9. Свободный текст, голос, файлы (ТЗ 6.4). TODO(шаг 7): текст — поиск после проверки «красных слов».
+  // 9. Свободный текст — поиск по материалам автора (ТЗ 6.4, 10.1); «красные слова» уже проверены выше.
   bot.on('message:voice', (ctx) => ctx.reply(T.voiceNotSupported, { reply_markup: openApp() }))
-  bot.on('message:text', (ctx) => ctx.reply(T.searchSoon, { reply_markup: openApp() }))
+  bot.on('message:text', async (ctx) => {
+    if (ctx.message.text.startsWith('/')) return ctx.reply(T.mainMenu, { reply_markup: mainMenu() })
+    if (!(await takeSearchQuota(redis, ctx.from.id))) return ctx.reply(T.searchLimit, { reply_markup: openApp() })
+    const hits = await searchMaterials(db, ctx.message.text, 5)
+    if (hits.length === 0) {
+      return ctx.reply(T.searchNothing, { reply_markup: new InlineKeyboard().text(T.searchWant, 'want').row().webApp(T.openAppButton, appUrl()) })
+    }
+    // Только ссылки на материалы автора, своего текста нет (приёмка 19). Закрытые — с замком (ТЗ 10.1).
+    const kb = new InlineKeyboard()
+    for (const h of hits) kb.webApp(`${h.access === 'paid' ? '🔒 ' : ''}${h.title}`, `${publicUrl}/app?m=${h.id}`).row()
+    await ctx.reply(T.searchResults, { reply_markup: kb })
+  })
+
+  // «Хочу материал на эту тему»: только тема из словаря и дата (ТЗ 11.2, Р2).
+  bot.callbackQuery('want', async (ctx) => {
+    const topics = await listTopics(db)
+    const kb = new InlineKeyboard()
+    topics.forEach((t, i) => {
+      kb.text(t, `want:${i}`)
+      if (i % 2 === 1) kb.row()
+    })
+    await show(ctx, T.searchWantPick, kb)
+  })
+  bot.callbackQuery(/^want:(\d+)$/, async (ctx) => {
+    const topic = (await listTopics(db))[Number(ctx.match[1])]
+    if (topic) await bumpWantedTopic(db, topic)
+    await show(ctx, T.searchWantThanks, new InlineKeyboard().webApp(T.openAppButton, appUrl()))
+  })
   bot.on('message', (ctx) => ctx.reply(T.onlyTextAndVoice, { reply_markup: openApp() }))
   // Устаревшие кнопки, которых больше нет.
   bot.on('callback_query', (ctx) => show(ctx, T.mainMenu, mainMenu()))

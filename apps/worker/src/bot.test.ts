@@ -63,7 +63,10 @@ before(async () => {
     const result = method === 'sendMessage' || method === 'editMessageText' ? { message_id: 1, date: 0, chat, text: '' } : true
     return { ok: true, result } as never
   })
-  setupBot(bot, { db, log: pino({ level: 'silent' }), publicUrl: 'https://example.test', channelUrl: 'https://t.me/x' })
+  // Лимит поиска в памяти вместо Redis.
+  const counters = new Map<string, number>()
+  const redis = { incr: async (k: string) => counters.set(k, (counters.get(k) ?? 0) + 1).get(k)!, expire: async () => 1 as const }
+  setupBot(bot, { db, log: pino({ level: 'silent' }), publicUrl: 'https://example.test', channelUrl: 'https://t.me/x', redis: redis as never })
 })
 
 beforeEach(async () => {
@@ -123,8 +126,9 @@ test('голос, файлы и текст получают свои ответ�
     update_id: updateId++,
     message: { message_id: updateId, date: 0, chat, from, sticker: { file_id: 's', file_unique_id: 's', type: 'regular', width: 1, height: 1, is_animated: false, is_video: false } },
   } as Update)
-  await send('не спит ночью')
-  assert.deepEqual(sentTexts(), [T.voiceNotSupported, T.onlyTextAndVoice, T.searchSoon])
+  await send('абракадабра несуществующая')
+  assert.deepEqual(sentTexts(), [T.voiceNotSupported, T.onlyTextAndVoice, T.searchNothing])
+  assert.ok(buttons().includes('want'), 'кнопка «Хочу материал на эту тему»')
 })
 
 test('/revoke: подтверждение, удаление, повторный /start — с нуля (приёмка 3)', { skip: !url }, async () => {
@@ -204,4 +208,20 @@ test('«Прислать в чат»: первый раз по ссылке, п�
   await sendAudio(api, redis as never, d)
   await sendAudio(api, redis as never, d)
   assert.deepEqual(sent, [d.url, 'FILE1'])
+})
+
+test('«красное слово» в чате — экстренный текст с 103 и 112, даже без согласия (ТЗ 10.3, приёмка 20)', { skip: !url }, async () => {
+  await send('у малыша температурит третий день')
+  const [text] = sentTexts()
+  assert.ok(text?.includes('103') && text.includes('112'), 'экстренный текст')
+  assert.equal((await db.select().from(users).where(eq(users.tgId, ME))).length, 0, 'ничего не записано')
+})
+
+test('«Хочу материал на эту тему»: только тема из словаря (ТЗ 11.2)', { skip: !url }, async () => {
+  await grantConsents(db, ME, ['pd'], { isTester: true })
+  await press('want')
+  assert.ok(buttons().some((b) => b.startsWith('want:')))
+  calls = []
+  await press('want:0')
+  assert.deepEqual(sentTexts(), [T.searchWantThanks])
 })

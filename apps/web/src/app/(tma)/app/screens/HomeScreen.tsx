@@ -29,9 +29,12 @@ export function HomeScreen() {
         </Section>
       )}
 
-      <div className="px-4 pt-3">
+      <div className="flex flex-col gap-2 px-4 pt-3">
         <Button size="l" stretched onClick={() => nav.push({ name: 'match' })}>
           {t.matchButton}
+        </Button>
+        <Button size="m" mode="bezeled" stretched onClick={() => nav.push({ name: 'search' })}>
+          {t.searchButton}
         </Button>
       </div>
 
