@@ -1,5 +1,5 @@
 'use server'
-import { addAccess, countTesters, deleteTesters, removeAccess } from '@mama/shared'
+import { addAccess, countTesters, deleteTesters, embedProvider, removeAccess, runSearchCheck, saveSearchCheckReport } from '@mama/shared'
 import { getDb } from '@mama/shared/db'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -51,4 +51,24 @@ export async function deleteTestersAction(form: FormData) {
   await audit(`удалены данные тестировщиков: ${n}`, 'testers')
   revalidatePath('/admin/testers')
   redirect(`/admin/testers?deleted=${n}`)
+}
+
+/** «Прогнать тест» поиска (ТЗ 10.1, приёмка 29): все запросы из «Проверки поиска» через поиск мамы. */
+export async function runSearchCheckAction() {
+  const { payload } = await requireAdmin()
+  const { docs } = await payload.find({ collection: 'search-checks', depth: 1, limit: 500, pagination: false, sort: 'createdAt', overrideAccess: true })
+  const checks = docs.map((d) => ({
+    id: d.id,
+    query: d.query,
+    expected: (d.expected ?? []).map((m) => (typeof m === 'object' ? m.id : m)),
+    expectedTitles: (d.expected ?? []).map((m) => (typeof m === 'object' ? m.title : `материал ${m}`)),
+    expectNothing: Boolean(d.expectNothing),
+  }))
+  const db = getDb()
+  const report = await runSearchCheck(db, embedProvider(), checks)
+  await saveSearchCheckReport(db, report)
+  log.info({ found: report.found, nothing: report.nothing, mode: report.mode }, 'search check run')
+  await audit(`прогнан тест поиска: ${report.found.ok} из ${report.found.total}`, 'search-check')
+  revalidatePath('/admin/search-check')
+  redirect('/admin/search-check')
 }

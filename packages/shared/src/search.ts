@@ -46,7 +46,7 @@ export async function searchMaterials(db: Db, query: string, limit = 10, strict 
 // Текст запроса и его вектор живут только в этой функции: ни в базе, ни в Redis, ни в логах, ни в кеше.
 
 /** Результат не дальше этого от лучшего: «хвост» почти одинаковых баллов у e5 — обычно шум. */
-const SIM_MARGIN = 0.03
+export const SIM_MARGIN = 0.03
 /** Сколько материалов показывать маме при поиске по смыслу (ТЗ 10.1: 1–3). */
 export const SEMANTIC_LIMIT = 3
 /** Вектор запроса — прямой вызов с коротким таймаутом; не успел — поиск по словам (ТЗ 13: ≤ 5 с). */
@@ -57,7 +57,7 @@ const RRF_K = 60
 export type SearchMode = 'semantic' | 'words' | 'fallback'
 
 /** Ближайшие материалы по смыслу: лучшая часть материала, порог и отступ от лучшего (настраиваются, шаг 4). */
-export async function semanticHits(db: Db, vector: number[], minSimilarity: number, limit = SEMANTIC_LIMIT) {
+export async function semanticHits(db: Db, vector: number[], minSimilarity: number, limit = SEMANTIC_LIMIT, margin = SIM_MARGIN) {
   const q = JSON.stringify(vector)
   const rows = await db.execute<{ id: number; title: string; access: string; type: string; sim: number }>(sql`
     with near as (
@@ -76,7 +76,7 @@ export async function semanticHits(db: Db, vector: number[], minSimilarity: numb
   const top = Number(rows[0]?.sim ?? 0)
   return rows
     .map((r) => ({ id: Number(r.id), title: r.title, access: r.access === 'paid' ? ('paid' as const) : ('free' as const), type: r.type, sim: Number(r.sim) }))
-    .filter((r) => r.sim >= minSimilarity && r.sim >= top - SIM_MARGIN)
+    .filter((r) => r.sim >= minSimilarity && r.sim >= top - margin)
     .slice(0, limit)
 }
 

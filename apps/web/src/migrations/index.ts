@@ -16,6 +16,7 @@ import * as migration_20261028_094313_step2_retention from './20261028_094313_st
 import * as migration_20261028_095330_step2_calendar_on from './20261028_095330_step2_calendar_on';
 import * as migration_20261028_123146_etap3_how_moms_ask from './20261028_123146_etap3_how_moms_ask';
 import * as migration_20261028_123934_etap3_search_settings from './20261028_123934_etap3_search_settings';
+import * as migration_20261028_130146_etap3_search_checks from './20261028_130146_etap3_search_checks';
 
 export const migrations = [
   {
@@ -106,6 +107,11 @@ export const migrations = [
   {
     up: migration_20261028_123934_etap3_search_settings.up,
     down: migration_20261028_123934_etap3_search_settings.down,
-    name: '20261028_123934_etap3_search_settings'
+    name: '20261028_123934_etap3_search_settings',
+  },
+  {
+    up: migration_20261028_130146_etap3_search_checks.up,
+    down: migration_20261028_130146_etap3_search_checks.down,
+    name: '20261028_130146_etap3_search_checks'
   },
 ];

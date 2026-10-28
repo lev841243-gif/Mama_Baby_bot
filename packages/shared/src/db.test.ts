@@ -22,6 +22,7 @@ import { resetSettingsCache, setAppSettings } from './settings'
 import { runInactiveCleanup } from './inactive'
 import { fakeEmbedProvider, syncMaterialVectors, type EmbedProvider } from './embed'
 import { findMaterials } from './search'
+import { getSearchCheckReports, runSearchCheck, saveSearchCheckReport } from './search-check'
 
 const url = process.env.TEST_DATABASE_URL
 // Календарь по умолчанию выключен: его тесты включают флаг сами.
@@ -463,6 +464,45 @@ test('поиск по смыслу: 1–3 материала выше порог
       await setAppSettings(tx, { semanticSearch: false })
       resetSettingsCache()
       assert.equal((await findMaterials(tx, 'дневной сон', test)).mode, 'words')
+      throw new Rollback()
+    })
+    .catch((err: unknown) => {
+      if (!(err instanceof Rollback)) throw err
+    })
+  resetSettingsCache()
+})
+
+test('тест поиска «25 из 30»: нашлось / «такой статьи нет», таблица порогов, прошлый итог (этап 3, приёмка 29)', { skip: !url }, async () => {
+  class Rollback extends Error {}
+  const test: EmbedProvider = { ...fakeEmbedProvider, id: 'test' }
+  await db
+    .transaction(async (txRaw) => {
+      const tx = txRaw as unknown as Db
+      const [r] = await tx.execute<{ id: number }>(sql`
+        insert into payload.materials (title, type, "order", access, _status, search_text)
+        values ('Тест: дневной сон', 'article', 1, 'free', 'published', 'Малыш не спит днём')
+        returning id`)
+      const sleep = Number(r!.id)
+      await syncMaterialVectors(tx, test)
+      await setAppSettings(tx, { semanticSearch: true, searchMinSimilarity: 0.3 })
+      resetSettingsCache()
+
+      const report = await runSearchCheck(tx, test, [
+        { id: 1, query: 'не спит днём', expected: [sleep], expectNothing: false },
+        { id: 2, query: 'налоговый вычет квартира', expected: [], expectNothing: true },
+        { id: 3, query: 'налоговый вычет', expected: [sleep], expectNothing: false },
+      ])
+      assert.equal(report.mode, 'semantic')
+      assert.deepEqual(report.found, { ok: 1, total: 2 })
+      assert.deepEqual(report.nothing, { ok: 1, total: 1 })
+      assert.equal(report.rows[0]!.expectedRank, 1)
+      assert.equal(report.thresholds.length, 15)
+
+      await saveSearchCheckReport(tx, report)
+      await saveSearchCheckReport(tx, { ...report, at: new Date().toISOString() })
+      const { current, previous } = await getSearchCheckReports(tx)
+      assert.equal(current?.found.ok, 1)
+      assert.equal(previous?.at, report.at)
       throw new Rollback()
     })
     .catch((err: unknown) => {

@@ -23,6 +23,7 @@ import { TestersView as TestersView_34e2bec8b6cfcb6592be9a871dafcd3a } from '../
 import { SummaryView as SummaryView_3f7102a7b929f1fe2580946e2f2d7138 } from '../../../components/admin/SummaryView'
 import { ImportDocxView as ImportDocxView_96dd5afb0a7016bf84d8297d10d0276d } from '../../../components/admin/ImportDocxView'
 import { ChannelImportView as ChannelImportView_365eb9ba4201fbd7523a9d0b23adf579 } from '../../../components/admin/ChannelImportView'
+import { SearchCheckView as SearchCheckView_5f9f89bcddc7910a4b4ff733604b8df7 } from '../../../components/admin/SearchCheckView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 import { S3ClientUploadHandler as S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24 } from '@payloadcms/storage-s3/client'
 
@@ -53,6 +54,7 @@ export const importMap = {
   "/components/admin/SummaryView#SummaryView": SummaryView_3f7102a7b929f1fe2580946e2f2d7138,
   "/components/admin/ImportDocxView#ImportDocxView": ImportDocxView_96dd5afb0a7016bf84d8297d10d0276d,
   "/components/admin/ChannelImportView#ChannelImportView": ChannelImportView_365eb9ba4201fbd7523a9d0b23adf579,
+  "/components/admin/SearchCheckView#SearchCheckView": SearchCheckView_5f9f89bcddc7910a4b4ff733604b8df7,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1,
   "@payloadcms/storage-s3/client#S3ClientUploadHandler": S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24
 }

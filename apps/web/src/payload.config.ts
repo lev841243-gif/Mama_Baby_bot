@@ -26,6 +26,7 @@ import { ConsentVersions } from './collections/ConsentVersions'
 import { Materials } from './collections/Materials'
 import { Media } from './collections/Media'
 import { Playlists } from './collections/Playlists'
+import { SearchChecks } from './collections/SearchChecks'
 import { Skills } from './collections/Skills'
 import { Tags } from './collections/Tags'
 import { UsefulLinks } from './collections/UsefulLinks'
@@ -58,6 +59,7 @@ export default buildConfig({
         summary: { Component: '/components/admin/SummaryView#SummaryView', path: '/summary' },
         importDocx: { Component: '/components/admin/ImportDocxView#ImportDocxView', path: '/import-docx' },
         channelImport: { Component: '/components/admin/ChannelImportView#ChannelImportView', path: '/channel-import' },
+        searchCheck: { Component: '/components/admin/SearchCheckView#SearchCheckView', path: '/search-check' },
       },
     },
   },
@@ -72,6 +74,7 @@ export default buildConfig({
     { ...ChannelPosts, endpoints: [channelImportEndpoint, channelGroupEndpoint] },
     ChannelBlocks,
     ConsentVersions,
+    SearchChecks,
     Users,
     AuditLog,
   ],

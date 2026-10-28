@@ -76,6 +76,7 @@ export interface Config {
     'channel-posts': ChannelPost;
     'channel-blocks': ChannelBlock;
     'consent-versions': ConsentVersion;
+    'search-checks': SearchCheck;
     users: User;
     'audit-log': AuditLog;
     'totp-attempts': TotpAttempt;
@@ -96,6 +97,7 @@ export interface Config {
     'channel-posts': ChannelPostsSelect<false> | ChannelPostsSelect<true>;
     'channel-blocks': ChannelBlocksSelect<false> | ChannelBlocksSelect<true>;
     'consent-versions': ConsentVersionsSelect<false> | ConsentVersionsSelect<true>;
+    'search-checks': SearchChecksSelect<false> | SearchChecksSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     'totp-attempts': TotpAttemptsSelect<false> | TotpAttemptsSelect<true>;
@@ -426,6 +428,24 @@ export interface ConsentVersion {
   createdAt: string;
 }
 /**
+ * Как мамы спросили бы своими словами, и какой материал должен найтись. Нужно 30 запросов; результат — на экране «Проверка поиска».
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-checks".
+ */
+export interface SearchCheck {
+  id: number;
+  query: string;
+  expected?: (number | Material)[] | null;
+  /**
+   * Несколько таких запросов помогают выбрать порог: без них поиск «находит» что-то всегда.
+   */
+  expectNothing?: boolean | null;
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
@@ -632,6 +652,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'consent-versions';
         value: number | ConsentVersion;
+      } | null)
+    | ({
+        relationTo: 'search-checks';
+        value: number | SearchCheck;
       } | null)
     | ({
         relationTo: 'users';
@@ -882,6 +906,18 @@ export interface ConsentVersionsSelect<T extends boolean = true> {
   type?: T;
   version?: T;
   significant?: T;
+  note?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-checks_select".
+ */
+export interface SearchChecksSelect<T extends boolean = true> {
+  query?: T;
+  expected?: T;
+  expectNothing?: T;
   note?: T;
   updatedAt?: T;
   createdAt?: T;

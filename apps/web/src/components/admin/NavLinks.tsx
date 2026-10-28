@@ -5,6 +5,7 @@ const LINKS = [
   { href: '/admin/channel-import', label: 'Посты канала' },
   { href: '/admin/collections/channel-posts?where[status][equals]=inbox', label: 'Входящие из канала' },
   { href: '/admin/summary', label: 'Сводка' },
+  { href: '/admin/search-check', label: 'Проверка поиска' },
   { href: '/admin/access-list', label: 'Список доступа' },
   { href: '/admin/testers', label: 'Тестировщики' },
 ]
