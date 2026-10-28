@@ -1,4 +1,4 @@
-import type { MigrateDownArgs, MigrateUpArgs } from '@payloadcms/db-postgres'
+import { sql, type MigrateDownArgs, type MigrateUpArgs } from '@payloadcms/db-postgres'
 
 // Сид словарей: теги (ТЗ 9.6), навыки (ТЗ 9.7), версии согласий 0.1 (черновики шаблонов).
 // Тексты бота по умолчанию лежат в коде (packages/shared/src/texts.ts) и показываются в админке как значения полей.
@@ -22,23 +22,22 @@ const SKILLS = [
 
 const CONSENTS = ['pd', 'feed', 'calendar', 'ads'] as const
 
-export async function up({ payload, req }: MigrateUpArgs): Promise<void> {
-  const r = { ...req, context: { ...req.context, seed: true } }
-  const tagIds = new Map<string, number>()
+// Прямой SQL, а не payload.create: Local API знает текущую схему коллекций, и на чистой базе падает на полях,
+// которые добавят более поздние миграции (так было с «Как говорят мамы» у навыков). Колонки — на момент этой миграции.
+export async function up({ db }: MigrateUpArgs): Promise<void> {
   for (const [i, name] of TAGS.entries()) {
-    const doc = await payload.create({ collection: 'tags', data: { name, order: (i + 1) * 10 }, req: r })
-    tagIds.set(name, doc.id as number)
+    await db.execute(sql`insert into "payload"."tags" ("name", "order") values (${name}, ${(i + 1) * 10})`)
   }
   for (const [i, name] of SKILLS.entries()) {
     // «Ползание» — и тег, и навык; они связаны (ТЗ 9.6).
-    await payload.create({ collection: 'skills', data: { name, order: (i + 1) * 10, tag: tagIds.get(name) }, req: r })
+    await db.execute(sql`
+      insert into "payload"."skills" ("name", "order", "tag_id")
+      values (${name}, ${(i + 1) * 10}, (select id from "payload"."tags" where "name" = ${name} limit 1))`)
   }
   for (const type of CONSENTS) {
-    await payload.create({
-      collection: 'consent-versions',
-      data: { type, version: '0.1', significant: true, note: 'Черновик шаблона, до экспертизы юриста' },
-      req: r,
-    })
+    await db.execute(sql`
+      insert into "payload"."consent_versions" ("type", "version", "significant", "note")
+      values (${type}, '0.1', true, 'Черновик шаблона, до экспертизы юриста')`)
   }
 }
 
