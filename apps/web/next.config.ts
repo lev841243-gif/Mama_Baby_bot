@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   outputFileTracingRoot: path.resolve(dirname, '../..'),
   transpilePackages: ['@mama/shared'],
+  // Очереди и Redis — серверные пакеты, их не бандлим.
+  serverExternalPackages: ['bullmq', 'ioredis'],
   poweredByHeader: false,
   webpack: (config) => {
     config.resolve.extensionAlias = {

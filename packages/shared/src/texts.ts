@@ -1,6 +1,12 @@
 // Тексты по умолчанию — из юр. шаблона 07 (yuridicheskie-shablony/07-teksty-ekranov.md).
-// Окончательные тексты пишет автор в админке (ТЗ 6.8) — на шаге 3 они переедут в Payload global.
+// Окончательные тексты пишет автор в админке (ТЗ 6.8): Payload global «Тексты» → app.app_settings,
+// живой объект `T` в settings.ts. Файл без зависимостей — его импортирует клиентский код.
 export const DEFAULT_TEXTS = {
+  // Описание бота в профиле и в пустом чате (ТЗ 6.8). Аватар ставится в BotFather.
+  botDescription:
+    'Упражнения и практики Веры Лукиновой для мам малышей от 3 до 18 месяцев. Спокойно, по шагам, по возрасту малыша.',
+  botShortDescription: 'Упражнения и практики для мам малышей 3–18 месяцев.',
+
   betaBot:
     'Это бета-версия: бот в разработке и открыт только для тестирования. Что-то может работать не так, материалы ещё дополняются. После окончания тестирования все ваши данные в боте будут удалены.',
   betaBanner:
@@ -76,6 +82,93 @@ export const DEFAULT_TEXTS = {
 } as const
 
 export type TextKey = keyof typeof DEFAULT_TEXTS
+
+/** Подписи и группы текстов для админки автора. Каждый ключ — ровно в одной группе (проверяется тестом). */
+export const TEXT_GROUPS: { label: string; texts: Partial<Record<TextKey, string>> }[] = [
+  {
+    label: 'Вход и бета',
+    texts: {
+      botDescription: 'Описание бота (профиль, пустой чат)',
+      botShortDescription: 'Короткое описание бота',
+      betaBot: 'Бета: первая строка приветствия и /help',
+      betaBanner: 'Бета: плашка в приложении',
+      betaConsent: 'Бета: над окном согласий',
+      notInAccessList: 'Не из списка доступа ({channelUrl} — ссылка на канал)',
+      welcome: 'Приветствие после /start ({siteUrl} — адрес сайта)',
+      startButton: 'Кнопка «Начать»',
+      openAppButton: 'Кнопка «Открыть приложение»',
+      needConsent: 'Нет согласия — просьба открыть приложение',
+      afterConsent: 'После окна согласий (в чат)',
+      openViaBot: 'Приложение открыто вне Telegram',
+    },
+  },
+  {
+    label: 'Меню и помощь',
+    texts: {
+      mainMenu: 'Главное меню',
+      helpButton: 'Кнопка «Помощь»',
+      settingsButton: 'Кнопка «Настройки»',
+      backButton: 'Кнопка «Назад»',
+      help: 'Текст /help ({channelUrl}, {siteUrl})',
+      notReadyYet: 'Функция ещё в разработке',
+    },
+  },
+  {
+    label: 'Настройки и возраст',
+    texts: {
+      settingsTitle: 'Заголовок настроек в боте',
+      settingsAge: 'Возраст малыша ({age})',
+      settingsAgeEmpty: 'Возраст не указан',
+      ageButton: 'Кнопка «Возраст малыша»',
+      myConsentsButton: 'Кнопка «Мои согласия»',
+      revokeButton: 'Кнопка «Отозвать согласие»',
+      ageAskYear: 'Вопрос о годе рождения',
+      ageAskMonth: 'Вопрос о месяце рождения',
+      ageSaved: 'Дата сохранена ({month} {year})',
+      ageTooYoung: 'Малышу меньше 3 месяцев',
+      ageClearButton: 'Кнопка «Удалить дату»',
+      ageCleared: 'Дата удалена',
+      appSettingsTitle: 'Заголовок настроек в приложении',
+    },
+  },
+  {
+    label: 'Согласия и отзыв',
+    texts: {
+      consentTitle: 'Окно согласий: заголовок',
+      consentIntro: 'Окно согласий: вступление',
+      consentAcceptAll: 'Кнопка «Принять всё»',
+      consentContinue: 'Кнопка «Продолжить с выбранными»',
+      consentNotNow: 'Кнопка «Не сейчас»',
+      consentNotNowText: 'После «Не сейчас»',
+      consentDocLink: 'Ссылка «Текст согласия»',
+      privacyLink: 'Ссылка на политику',
+      revokeConfirm: 'Подтверждение отзыва',
+      revokeSubscription: 'Отзыв при оплаченной подписке ({date}, {siteUrl})',
+      revokeYes: 'Кнопка «Да, удалить»',
+      revokeNo: 'Кнопка «Отмена»',
+      revokeDone: 'Данные удалены (бот)',
+      revokeCancelled: 'Отзыв отменён',
+      revokeNothing: 'Удалять нечего',
+      consentRevokeItem: 'Отзыв одного пункта ({title})',
+      consentRevokeItemPd: 'Отзыв первого пункта — пояснение',
+      consentRevokeOk: 'Кнопка «Отозвать»',
+      appRevokeAll: 'Приложение: кнопка полного отзыва',
+      appDeletedTitle: 'Приложение: заголовок после удаления',
+      appDeleted: 'Приложение: текст после удаления',
+    },
+  },
+  {
+    label: 'Чат и материалы',
+    texts: {
+      searchSoon: 'Поиск ещё не готов',
+      voiceNotSupported: 'Голосовые не поддерживаются',
+      onlyTextAndVoice: 'Пришли фото, файл или стикер',
+      medicalDisclaimer: 'Подпись под каждым материалом',
+    },
+  },
+]
+
+export const TEXT_LABELS = Object.assign({}, ...TEXT_GROUPS.map((g) => g.texts)) as Record<TextKey, string>
 
 export function fmt(text: string, vars: Record<string, string>): string {
   return text.replace(/\{(\w+)\}/g, (m, k: string) => vars[k] ?? m)

@@ -6,12 +6,12 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev:web": "pnpm -F @mama/web dev",
-    "dev:worker": "pnpm -F @mama/worker dev",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "db:generate": "pnpm -F @mama/shared db:generate",
-    "db:migrate": "pnpm -F @mama/web payload migrate && pnpm -F @mama/shared db:migrate"
+    "dev:web": "corepack pnpm -F @mama/web dev",
+    "dev:worker": "corepack pnpm -F @mama/worker dev",
+    "build": "corepack pnpm -r build",
+    "typecheck": "corepack pnpm -r typecheck",
+    "test": "corepack pnpm -r test",
+    "db:generate": "corepack pnpm -F @mama/shared db:generate",
+    "db:migrate": "corepack pnpm -F @mama/web payload migrate && corepack pnpm -F @mama/shared db:migrate"
   }
 }

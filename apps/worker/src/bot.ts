@@ -1,7 +1,7 @@
 // Бот: вход, гейт согласия, главное меню, настройки, возраст ребёнка, отзыв согласия (ТЗ 6).
 import {
-  DEFAULT_TEXTS as T,
   MONTHS_RU,
+  T,
   ageInMonths,
   birthYearOptions,
   checkAccess,
@@ -9,6 +9,7 @@ import {
   fmt,
   getActiveSubscriptionUntil,
   getChildBirth,
+  getConfig,
   getConsentState,
   getSettings,
   hashTgId,
@@ -54,6 +55,8 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl }: BotDeps) 
   // 1. Только личные чаты. Посты канала — шаг 9 плана.
   bot.use(async (ctx, next) => {
     if (ctx.chat?.type !== 'private' || !ctx.from || ctx.from.is_bot) return
+    // Тексты и настройки из админки (TTL 30 с): живой объект T обновляется здесь.
+    await getConfig(db)
     await next()
   })
 

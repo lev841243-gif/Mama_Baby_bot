@@ -47,3 +47,24 @@ test('склонение месяцев', () => {
   assert.equal(monthsLabel(12), '12 месяцев')
   assert.equal(monthsLabel(22), '22 месяца')
 })
+
+test('каждый текст подписан для админки ровно в одной группе', async () => {
+  const { DEFAULT_TEXTS, TEXT_GROUPS } = await import('./texts')
+  const all = TEXT_GROUPS.flatMap((g) => Object.keys(g.texts))
+  assert.equal(new Set(all).size, all.length, 'ключ в двух группах')
+  assert.deepEqual([...all].sort(), Object.keys(DEFAULT_TEXTS).sort())
+})
+
+test('версии согласий из админки: первая версия и существенные (Р8)', async () => {
+  const { resolveConsentVersions } = await import('./consent-types')
+  const v = resolveConsentVersions([
+    { type: 'pd', version: '0.1', significant: false },
+    { type: 'pd', version: '0.2', significant: false },
+    { type: 'feed', version: '0.1', significant: false },
+    { type: 'feed', version: '1.0', significant: true },
+    { type: 'feed', version: '1.1', significant: false },
+  ])
+  assert.deepEqual(v.pd, { current: '0.2', required: '0.1' })
+  assert.deepEqual(v.feed, { current: '1.1', required: '1.0' })
+  assert.deepEqual(v.ads, { current: '0.1', required: '0.1' })
+})

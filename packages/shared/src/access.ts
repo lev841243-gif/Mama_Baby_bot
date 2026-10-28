@@ -12,6 +12,10 @@ async function loadAccessList(db: Db): Promise<Set<number>> {
   return cache.ids
 }
 
+export function resetAccessCache() {
+  cache = undefined
+}
+
 export type AccessDecision = { allowed: boolean; closedMode: boolean }
 
 /**
@@ -34,7 +38,7 @@ export function parseTgIdList(raw: string | undefined): number[] {
     .filter((n) => Number.isSafeInteger(n) && n > 0)
 }
 
-/** Начальный список доступа из env ACCESS_LIST_TG_IDS. Экран в админке — шаг 3. */
+/** Начальный список доступа из env ACCESS_LIST_TG_IDS. Дальше список ведётся в админке («Список доступа»). */
 export async function seedAccessList(db: Db, raw: string | undefined): Promise<number> {
   const ids = parseTgIdList(raw)
   if (ids.length === 0) return 0

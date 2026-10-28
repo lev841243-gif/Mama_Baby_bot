@@ -167,3 +167,25 @@ test('блокировка бота отмечается, без записи о
   const [row] = await db.select().from(users).where(eq(users.tgId, ME))
   assert.equal(row!.botBlocked, true)
 })
+
+test('тестовый анонс: картинка с подписью и кнопкой; не скачалась — текстом', async () => {
+  const { sendAnnounce } = await import('./announce')
+  const sent: { method: string; payload: Record<string, unknown> }[] = []
+  let failPhoto = false
+  const api = new Bot('1:test', { botInfo: { id: 1, is_bot: true, first_name: 'b', username: 'b' } as never }).api
+  api.config.use(async (_prev, method, payload) => {
+    sent.push({ method, payload: payload as Record<string, unknown> })
+    if (method === 'sendPhoto' && failPhoto) return { ok: false, error_code: 400, description: 'wrong file' } as never
+    return { ok: true, result: { message_id: 1, date: 0, chat: { id: 1, type: 'private' } } } as never
+  })
+  const data = { tgId: 5, materialId: 7, title: 'Упражнение <1>', announce: 'Две строки', photoUrl: 'https://x/p.webp' }
+  await sendAnnounce(api, pino({ level: 'silent' }), 'https://example.test', data)
+  assert.equal(sent[0]!.method, 'sendPhoto')
+  assert.equal(sent[0]!.payload.caption, '<b>Упражнение &lt;1&gt;</b>\n\nДве строки')
+  const kb = sent[0]!.payload.reply_markup as { inline_keyboard: { web_app: { url: string } }[][] }
+  assert.equal(kb.inline_keyboard[0]![0]!.web_app.url, 'https://example.test/app?m=7')
+  sent.length = 0
+  failPhoto = true
+  await sendAnnounce(api, pino({ level: 'silent' }), 'https://example.test', data)
+  assert.deepEqual(sent.map((s) => s.method), ['sendPhoto', 'sendMessage'])
+})

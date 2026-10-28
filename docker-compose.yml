@@ -46,7 +46,12 @@ services:
     build: { context: ., target: web }
     restart: unless-stopped
     env_file: .env
-    environment: *app-env
+    environment:
+      <<: *app-env
+      # Медиа на диске, если S3 не настроен (S3_BUCKET пуст).
+      MEDIA_DIR: /data/media
+    volumes:
+      - media:/data/media
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
@@ -86,6 +91,7 @@ services:
       - web
 
 volumes:
+  media:
   pgdata:
   redisdata:
   caddy_data:

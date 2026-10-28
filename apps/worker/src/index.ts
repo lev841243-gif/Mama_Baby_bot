@@ -1,10 +1,11 @@
 // Процесс worker: бот grammY (long polling) + обработчики очередей BullMQ.
 import { autoRetry } from '@grammyjs/auto-retry'
 import { apiThrottler } from '@grammyjs/transformer-throttler'
-import { DEFAULT_TEXTS, QUEUE_BOT, createLogger, createRedis, hashTgId, setBotBlocked, type BotJob } from '@mama/shared'
+import { QUEUE_BOT, T, createLogger, createRedis, getConfig, hashTgId, setBotBlocked, type BotJob } from '@mama/shared'
 import { getDb } from '@mama/shared/db'
 import { Worker } from 'bullmq'
 import { Bot, GrammyError } from 'grammy'
+import { type AnnounceData, sendAnnounce } from './announce'
 import { setupBot } from './bot'
 
 const log = createLogger('worker')
@@ -45,20 +46,43 @@ const worker = new Worker<BotJob['data'], void, BotJob['name']>(
   QUEUE_BOT,
   async (job) => {
     const { tgId } = job.data
+    await getConfig(db)
     switch (job.name) {
       case 'consent-granted':
-        // После окна согласий в чате появляется главное меню (ТЗ 6.1, шаг 3).
-        await sendToUser(tgId, () => bot.api.sendMessage(tgId, DEFAULT_TEXTS.afterConsent, { reply_markup: mainMenu() }))
+        // После окна согласий в чате появляется главное меню (ТЗ 6.1).
+        await sendToUser(tgId, () => bot.api.sendMessage(tgId, T.afterConsent, { reply_markup: mainMenu() }))
         break
       case 'data-deleted':
         // Отзыв из приложения: последнее сообщение в чат (ТЗ 6.5).
-        await sendToUser(tgId, () => bot.api.sendMessage(tgId, DEFAULT_TEXTS.revokeDone))
+        await sendToUser(tgId, () => bot.api.sendMessage(tgId, T.revokeDone))
+        break
+      case 'test-announce':
+        await sendAnnounce(bot.api, log, publicUrl, job.data as AnnounceData)
         break
     }
   },
   { connection: createRedis(), concurrency: 5 },
 )
 worker.on('failed', (job, err) => log.error({ err, job: job?.name }, 'bot job failed'))
+
+/** Описание бота — текст автора (ТЗ 6.8). Меняется в админке, доезжает при проверке раз в 5 минут. */
+let appliedDescription = ''
+async function syncDescription() {
+  await getConfig(db)
+  const key = `${T.botDescription}|${T.botShortDescription}|${T.openAppButton}`
+  if (key === appliedDescription) return
+  await bot.api.setMyDescription(T.botDescription)
+  await bot.api.setMyShortDescription(T.botShortDescription)
+  try {
+    // Кнопка меню рядом с полем ввода (ТЗ 6.2). Telegram принимает только https.
+    await bot.api.setChatMenuButton({
+      menu_button: { type: 'web_app', text: T.openAppButton, web_app: { url: `${publicUrl}/app` } },
+    })
+  } catch (err) {
+    log.warn({ err }, 'не удалось поставить кнопку меню (PUBLIC_URL должен быть https)')
+  }
+  appliedDescription = key
+}
 
 async function configureBot() {
   await bot.api.setMyCommands([
@@ -68,14 +92,8 @@ async function configureBot() {
     { command: 'settings', description: 'Настройки' },
     { command: 'revoke', description: 'Отозвать согласие и удалить данные' },
   ])
-  try {
-    // Кнопка меню рядом с полем ввода (ТЗ 6.2). Telegram принимает только https.
-    await bot.api.setChatMenuButton({
-      menu_button: { type: 'web_app', text: DEFAULT_TEXTS.openAppButton, web_app: { url: `${publicUrl}/app` } },
-    })
-  } catch (err) {
-    log.warn({ err }, 'не удалось поставить кнопку меню (PUBLIC_URL должен быть https)')
-  }
+  await syncDescription()
+  setInterval(() => syncDescription().catch((err: unknown) => log.warn({ err }, 'bot description sync failed')), 5 * 60_000).unref()
 }
 
 async function shutdown(signal: string) {

@@ -1,13 +1,13 @@
 import 'server-only'
 import {
   CLIENT_TEXT_KEYS,
-  DEFAULT_TEXTS,
   QUEUE_BOT,
   checkAccess,
   createLogger,
   createRedis,
   fmt,
   getConsentState,
+  getConfig,
   getSettings,
   hashTgId,
   visibleConsentItems,
@@ -29,13 +29,13 @@ export function getBotQueue() {
 
 const channelUrl = () => process.env.CHANNEL_URL ?? 'https://t.me/detimam_pro'
 
-/** Тексты для мини-приложения. TODO(шаг 3): из Payload global, правит автор (ТЗ 6.8). */
-function clientTexts() {
-  return Object.fromEntries(CLIENT_TEXT_KEYS.map((k) => [k, DEFAULT_TEXTS[k]])) as SessionPayload['texts']
+/** Тексты для мини-приложения — из админки (ТЗ 6.8). */
+function clientTexts(texts: Awaited<ReturnType<typeof getConfig>>['texts']) {
+  return Object.fromEntries(CLIENT_TEXT_KEYS.map((k) => [k, texts[k]])) as SessionPayload['texts']
 }
 
 export async function buildSession(state: ConsentState): Promise<SessionPayload> {
-  const settings = await getSettings(getDb())
+  const { settings, texts } = await getConfig(getDb())
   return {
     status: state.pdValid ? 'ready' : 'needConsent',
     beta: settings.betaBanner,
@@ -49,7 +49,7 @@ export async function buildSession(state: ConsentState): Promise<SessionPayload>
       })),
       granted: Object.keys(state.granted) as SessionPayload['consent']['granted'],
     },
-    texts: clientTexts(),
+    texts: clientTexts(texts),
   }
 }
 
@@ -79,8 +79,9 @@ export function tmaRoute(handler: Handler, { requireConsent = true }: RouteOptio
     try {
       const access = await checkAccess(getDb(), tgId)
       if (!access.allowed) {
+        const { texts } = await getConfig(getDb())
         return NextResponse.json(
-          { status: 'closed', text: fmt(DEFAULT_TEXTS.notInAccessList, { channelUrl: channelUrl() }) },
+          { status: 'closed', text: fmt(texts.notInAccessList, { channelUrl: channelUrl() }) },
           { status: 403 },
         )
       }

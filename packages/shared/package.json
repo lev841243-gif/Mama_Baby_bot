@@ -8,7 +8,9 @@
     "./db": "./src/db/index.ts",
     "./db/schema": "./src/db/schema.ts",
     "./texts": "./src/texts.ts",
-    "./consent-types": "./src/consent-types.ts"
+    "./consent-types": "./src/consent-types.ts",
+    "./content": "./src/content.ts",
+    "./age": "./src/age.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",

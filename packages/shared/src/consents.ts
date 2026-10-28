@@ -2,40 +2,22 @@ import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Db } from './db/client'
 import { consents, feedSent, users } from './db/schema'
-import { CONSENT_TYPES, type ConsentType } from './consent-types'
+import { getConsentVersions } from './settings'
+import {
+  CONSENT_TYPES,
+  DEFAULT_CONSENT_VERSIONS,
+  compareVersions,
+  resolveConsentVersions,
+  type ConsentType,
+  type ConsentVersions,
+} from './consent-types'
 
-export { CONSENT_TYPES, type ConsentType }
-
-/**
- * Версии текстов согласий (ТЗ 6.6, Р8). `current` — версия, которую мама принимает сейчас.
- * `required` — последняя версия, отмеченная автором как существенная: кто принял более раннюю,
- * проходит согласие заново при следующем действии (приёмка 4). Несущественная правка
- * (current > required) повторного согласия не требует.
- * TODO(шаг 3): версии и флаг «существенное» — из Payload, публикует автор.
- * Сейчас тексты — черновики 0.1 из yuridicheskie-shablony.
- */
-export const CONSENT_VERSIONS: Record<ConsentType, { current: string; required: string }> = {
-  pd: { current: '0.1', required: '0.1' },
-  feed: { current: '0.1', required: '0.1' },
-  calendar: { current: '0.1', required: '0.1' },
-  ads: { current: '0.1', required: '0.1' },
-}
-
-/** Сравнение версий вида «1.2.3»: <0, 0, >0. */
-export function compareVersions(a: string, b: string): number {
-  const pa = a.split('.').map(Number)
-  const pb = b.split('.').map(Number)
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const d = (pa[i] ?? 0) - (pb[i] ?? 0)
-    if (d !== 0) return d
-  }
-  return 0
-}
+export { CONSENT_TYPES, DEFAULT_CONSENT_VERSIONS, compareVersions, resolveConsentVersions, type ConsentType, type ConsentVersions }
 
 export function isConsentVersionValid(
   type: ConsentType,
   version: string,
-  versions: Record<ConsentType, { required: string }> = CONSENT_VERSIONS,
+  versions: Record<ConsentType, { required: string }> = DEFAULT_CONSENT_VERSIONS,
 ): boolean {
   return compareVersions(version, versions[type].required) >= 0
 }
@@ -107,9 +89,10 @@ export async function getConsentState(db: Db, tgId: number): Promise<ConsentStat
     .select({ type: consents.type, version: consents.version })
     .from(consents)
     .where(and(eq(consents.userId, user.id), isNull(consents.revokedAt)))
+  const versions = await getConsentVersions(db)
   const granted: ConsentState['granted'] = {}
   // Согласие устаревшей существенной версии не действует — ни основное, ни необязательные.
-  for (const r of rows) if (isConsentVersionValid(r.type, r.version)) granted[r.type] = r.version
+  for (const r of rows) if (isConsentVersionValid(r.type, r.version, versions)) granted[r.type] = r.version
   return { userId: user.id, granted, pdValid: granted.pd !== undefined }
 }
 
@@ -133,6 +116,7 @@ export async function grantConsents(
   const visible = new Set(visibleConsentItems().map((i) => i.type))
   const wanted = [...new Set(types)].filter((t) => visible.has(t))
   if (!wanted.includes('pd')) throw new Error('pd consent required')
+  const versions = await getConsentVersions(db)
 
   await db.transaction(async (tx) => {
     const [user] = await tx
@@ -149,7 +133,7 @@ export async function grantConsents(
 
     const now = new Date()
     for (const type of wanted) {
-      const version = CONSENT_VERSIONS[type].current
+      const version = versions[type].current
       const current = active.find((a) => a.type === type)
       if (current?.version === version) continue
       // Прежняя версия закрывается, новая пишется отдельной записью (ТЗ 6.6).

@@ -30,6 +30,8 @@ ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 NEXT_TELEMETRY_DISABLED=1
 COPY --from=build --chown=node:node /repo/apps/web/.next/standalone ./
 COPY --from=build --chown=node:node /repo/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build --chown=node:node /repo/apps/web/public ./apps/web/public
+# Папка медиа под volume: владелец node, иначе Docker создаст её от root.
+RUN mkdir -p /data/media && chown node:node /data/media
 USER node
 EXPOSE 3000
 CMD ["node", "apps/web/server.js"]

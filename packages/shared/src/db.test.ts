@@ -83,3 +83,48 @@ test('полный отзыв удаляет всё, кроме записей �
   assert.equal(fresh.userId, null)
   assert.equal(await deleteUserData(db, B), false)
 })
+
+test('«Удалить данные тестировщиков» удаляет только тестировщиков (приёмка 36)', { skip: !url }, async () => {
+  const { deleteTesters } = await import('./admin')
+  // В транзакции с откатом: в базе разработки есть настоящие тестировщики, их не трогаем.
+  await db
+    .transaction(async (tx) => {
+      const t = tx as unknown as Db
+      await grantConsents(t, A, ['pd'], { isTester: true })
+      await grantConsents(t, B, ['pd'], { isTester: false })
+      assert.ok((await deleteTesters(t)) >= 1)
+      assert.equal((await t.select().from(users).where(eq(users.tgId, A))).length, 0)
+      assert.equal((await t.select().from(users).where(eq(users.tgId, B))).length, 1)
+      tx.rollback()
+    })
+    .catch((e: unknown) => {
+      if (!(e instanceof Error && e.message.includes('Rollback'))) throw e
+    })
+})
+
+test('тексты из админки подменяют значения по умолчанию, пустое поле — по умолчанию', { skip: !url }, async () => {
+  const { T, getTexts, resetSettingsCache } = await import('./settings')
+  const { DEFAULT_TEXTS } = await import('./texts')
+  const { appSettings } = await import('./db/schema')
+  const [before] = await db.select().from(appSettings).where(eq(appSettings.key, 'texts'))
+  await db
+    .transaction(async (tx) => {
+      const t = tx as unknown as Db
+      await t
+        .insert(appSettings)
+        .values({ key: 'texts', value: { mainMenu: 'Меню автора', help: '  ' } })
+        .onConflictDoUpdate({ target: appSettings.key, set: { value: { mainMenu: 'Меню автора', help: '  ' } } })
+      resetSettingsCache()
+      const texts = await getTexts(t)
+      assert.equal(texts.mainMenu, 'Меню автора')
+      assert.equal(T.mainMenu, 'Меню автора', 'живой объект T обновился')
+      assert.equal(texts.help, DEFAULT_TEXTS.help)
+      tx.rollback()
+    })
+    .catch((e: unknown) => {
+      if (!(e instanceof Error && e.message.includes('Rollback'))) throw e
+    })
+  resetSettingsCache()
+  await getTexts(db)
+  assert.equal(T.mainMenu, (before?.value as Record<string, string> | undefined)?.mainMenu || DEFAULT_TEXTS.mainMenu)
+})
