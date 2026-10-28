@@ -1,6 +1,7 @@
 import { T, type BotJob } from '@mama/shared'
 import { type Api, InlineKeyboard } from 'grammy'
 import type { Logger } from 'pino'
+import { appLink } from './app-url'
 
 export type AnnounceData = Extract<BotJob, { name: 'test-announce' }>['data']
 
@@ -19,7 +20,7 @@ export async function sendAnnounce(
 ) {
   const footer = opts.footer ? `\n\n<i>${escapeHtml(opts.footer)}</i>` : ''
   const text = `<b>${escapeHtml(d.title)}</b>${d.announce ? `\n\n${escapeHtml(d.announce)}` : ''}${footer}`
-  const reply_markup = new InlineKeyboard().webApp(opts.button ?? T.openAppButton, `${publicUrl}/app?m=${d.materialId}`)
+  const reply_markup = new InlineKeyboard().webApp(opts.button ?? T.openAppButton, appLink(publicUrl, { m: d.materialId }))
   if (d.photoUrl) {
     try {
       await api.sendPhoto(d.tgId, d.photoUrl, { caption: text, parse_mode: 'HTML', reply_markup })

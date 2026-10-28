@@ -28,6 +28,7 @@ import {
 import type { Db } from '@mama/shared/db'
 import { InlineKeyboard, type Bot, type Context } from 'grammy'
 import type { Logger } from 'pino'
+import { appLink } from './app-url'
 
 type Helpers = {
   db: Db
@@ -194,8 +195,8 @@ export function setupCalendarBot(bot: Bot, h: Helpers) {
     // После записи — материалы автора по навыку (ТЗ 10.4, п. 5). Закрытые — с замком.
     const mats = await materialsForSkill(db, d.skillId)
     const kb = new InlineKeyboard()
-    for (const m of mats) kb.webApp(`${m.access === 'paid' ? '🔒 ' : ''}${m.title}`, `${publicUrl}/app?m=${m.id}`).row()
-    kb.webApp(T.calOpenApp, `${publicUrl}/app?screen=calendar`)
+    for (const m of mats) kb.webApp(`${m.access === 'paid' ? '🔒 ' : ''}${m.title}`, appLink(publicUrl, { m: m.id })).row()
+    kb.webApp(T.calOpenApp, appLink(publicUrl, { screen: 'calendar' }))
     await show(ctx, mats.length ? `${T.calSaved}\n\n${T.calMaterials}` : T.calSaved, kb)
   })
 

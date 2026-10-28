@@ -31,6 +31,7 @@ import type { Message } from 'grammy/types'
 import { type AnnounceData, sendAnnounce } from './announce'
 import { type SendAudioData, sendAudio } from './audio'
 import { aiProvider, internalApi, runGroupBlocks } from './ai'
+import { appLink } from './app-url'
 import { setupBot } from './bot'
 
 const log = createLogger('worker')
@@ -144,7 +145,7 @@ const feedSender: FeedSender = {
   text: (tgId, kind) =>
     sendToUser(tgId, () =>
       kind === 'farewell'
-        ? bot.api.sendMessage(tgId, T.feedFarewell, { reply_markup: new InlineKeyboard().webApp(T.openAppButton, `${publicUrl}/app`) })
+        ? bot.api.sendMessage(tgId, T.feedFarewell, { reply_markup: new InlineKeyboard().webApp(T.openAppButton, appLink(publicUrl)) })
         : bot.api.sendMessage(tgId, T.feedResumeTomorrow, { reply_markup: new InlineKeyboard().text(T.feedButton, 'feed') }),
     ),
 }
@@ -278,7 +279,7 @@ async function syncDescription() {
   try {
     // Кнопка меню рядом с полем ввода (ТЗ 6.2). Telegram принимает только https.
     await bot.api.setChatMenuButton({
-      menu_button: { type: 'web_app', text: T.openAppButton, web_app: { url: `${publicUrl}/app` } },
+      menu_button: { type: 'web_app', text: T.openAppButton, web_app: { url: appLink(publicUrl) } },
     })
   } catch (err) {
     log.warn({ err }, 'не удалось поставить кнопку меню (PUBLIC_URL должен быть https)')

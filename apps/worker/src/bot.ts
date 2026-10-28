@@ -35,6 +35,7 @@ import { Bot, InlineKeyboard, type Context } from 'grammy'
 import type { Message } from 'grammy/types'
 import type { Redis } from 'ioredis'
 import type { Logger } from 'pino'
+import { appLink } from './app-url'
 import { setupCalendarBot } from './calendar-bot'
 import { setupFeedBot } from './feed-bot'
 
@@ -61,7 +62,7 @@ const html = { parse_mode: 'HTML' as const, link_preview_options: { is_disabled:
 
 export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, channel, speech = fakeSpeechProvider, downloadFile }: BotDeps) {
   const vars = { siteUrl: publicUrl, channelUrl }
-  const appUrl = (screen?: string) => `${publicUrl}/app${screen ? `?screen=${screen}` : ''}`
+  const appUrl = (screen?: string) => appLink(publicUrl, screen ? { screen } : {})
 
   const openApp = (text: string = T.openAppButton) => new InlineKeyboard().webApp(text, appUrl())
   const mainMenu = () =>
@@ -306,7 +307,7 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
     }
     // Только ссылки на материалы автора, своего текста нет (приёмка 19). Закрытые — с замком (ТЗ 10.1).
     const kb = new InlineKeyboard()
-    for (const h of hits) kb.webApp(`${h.access === 'paid' ? '🔒 ' : ''}${h.title}`, `${publicUrl}/app?m=${h.id}`).row()
+    for (const h of hits) kb.webApp(`${h.access === 'paid' ? '🔒 ' : ''}${h.title}`, appLink(publicUrl, { m: h.id })).row()
     await ctx.reply(T.searchResults, { reply_markup: kb })
   })
 
