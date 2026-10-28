@@ -1,6 +1,6 @@
 import { MATERIAL_TYPES, isAged, readingMinutes } from '@mama/shared/content'
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, CollectionConfig, Validate } from 'payload'
-import { canCreateDraft, canEditDraft, isAdmin, never } from '../payload/access'
+import { canCreateDraft, canEditDraft, isAdmin, never, totpUnlessLocal } from '../payload/access'
 import { auditCollectionChange } from '../payload/hooks/audit'
 import { lexicalPlainText } from '../lib/lexical-text'
 import { botQueue } from '../lib/queues'
@@ -96,7 +96,15 @@ export const Materials: CollectionConfig = {
     drafts: { schedulePublish: true },
     maxPerDoc: 100,
   },
-  access: { read: isAdmin, create: canCreateDraft, update: canEditDraft, delete: never, readVersions: isAdmin },
+  access: {
+    read: totpUnlessLocal(isAdmin),
+    create: totpUnlessLocal(canCreateDraft),
+    update: totpUnlessLocal(canEditDraft),
+    delete: never,
+    readVersions: totpUnlessLocal(isAdmin),
+  },
+  // Обёртку 2FA ставим сами (totpUnlessLocal), чтобы работала отложенная публикация.
+  custom: { totp: { disableAccessWrapper: { read: true, create: true, update: true, readVersions: true } } },
   hooks: { beforeChange: [stampPublished, computeMinutes, buildSearchText], afterChange: [auditCollectionChange, channelButton] },
   fields: [
     { name: 'title', label: 'Название', type: 'text', required: true },

@@ -244,3 +244,34 @@ test('пост канала автора уходит в админку, чуж�
   await post(-100999, 12)
   assert.deepEqual(got, [11])
 })
+
+test('закрытый режим: не из списка доступа — «Бот пока в разработке», ничего не записано (приёмка 34)', { skip: !url }, async () => {
+  const { appSettings } = await import('@mama/shared/db')
+  const { resetSettingsCache } = await import('@mama/shared')
+  await db
+    .transaction(async (tx) => {
+      // Включаем закрытый режим только внутри транзакции — работающий бот этого не видит.
+      await tx
+        .insert(appSettings)
+        .values({ key: 'closedMode', value: true })
+        .onConflictDoUpdate({ target: appSettings.key, set: { value: true } })
+      resetSettingsCache()
+      const b = new Bot('1:test', { botInfo: { id: 1, is_bot: true, first_name: 'bot', username: 'test_bot' } as never })
+      const out: string[] = []
+      b.api.config.use(async (_p, method, payload) => {
+        if (method === 'sendMessage') out.push(String((payload as { text: string }).text))
+        return { ok: true, result: { message_id: 1, date: 0, chat, text: '' } } as never
+      })
+      const counters = { incr: async () => 1, expire: async () => 1 }
+      setupBot(b, { db: tx as never, log: pino({ level: 'silent' }), publicUrl: 'https://example.test', channelUrl: 'https://t.me/x', redis: counters as never })
+      await b.handleUpdate({ update_id: 1, message: { message_id: 1, date: 0, chat, from, text: '/start', entities: [{ type: 'bot_command', offset: 0, length: 6 }] } } as Update)
+      assert.equal(out.length, 1)
+      assert.ok(out[0]!.startsWith('Бот пока в разработке'))
+      assert.equal((await tx.select().from(users).where(eq(users.tgId, ME))).length, 0)
+      tx.rollback()
+    })
+    .catch((e: unknown) => {
+      if (!(e instanceof Error && e.message.includes('Rollback'))) throw e
+    })
+  resetSettingsCache()
+})

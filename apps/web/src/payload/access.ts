@@ -1,3 +1,4 @@
+import { totpAccess } from 'payload-totp'
 import type { Access, FieldAccess, PayloadRequest } from 'payload'
 
 // Роли админки (ТЗ 4, 13): автор — всё; исполнитель — техническая поддержка, без изменения текстов автора.
@@ -25,3 +26,13 @@ export const canCreateDraft: Access = ({ req, data }) => {
   if (r === 'author') return true
   return r === 'developer' && (data as { _status?: string } | undefined)?._status !== 'published'
 }
+
+/**
+ * 2FA для запросов из админки и API, но не для серверного Local API: отложенную публикацию (задача Payload)
+ * выполняет сервер от имени автора без 2FA-сессии — обычные права ролей при этом действуют.
+ * Используется вместе с custom.totp.disableAccessWrapper у коллекции.
+ */
+export const totpUnlessLocal =
+  (inner: Access): Access =>
+  (args) =>
+    args.req.payloadAPI === 'local' ? inner(args) : totpAccess(inner)(args)

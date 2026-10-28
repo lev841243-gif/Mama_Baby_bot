@@ -35,6 +35,7 @@ import { Settings } from './globals/Settings'
 import { Subscription } from './globals/Subscription'
 import { Texts } from './globals/Texts'
 import { s3Config } from './lib/media-config'
+import { scheduledPublishFailed } from './payload/hooks/jobs'
 import { channelGroupEndpoint, channelImportEndpoint } from './payload/endpoints/channel'
 import { importDocxEndpoint } from './payload/endpoints/import-docx'
 import { sourceCheckEndpoint } from './payload/endpoints/source-check'
@@ -93,6 +94,16 @@ export default buildConfig({
   // Отложенная публикация материалов: задачи Payload, проверка раз в минуту в процессе web.
   jobs: {
     autoRun: [{ cron: '* * * * *', limit: 20, queue: 'default' }],
+    runHooks: true,
+    // Не удалась отложенная публикация (например, не заполнены обязательные поля) — автор видит это
+    // в «Журнале действий», исполнитель получает алерт.
+    jobsCollectionOverrides: ({ defaultJobsCollection }) => ({
+      ...defaultJobsCollection,
+      hooks: {
+        ...defaultJobsCollection.hooks,
+        afterChange: [...(defaultJobsCollection.hooks?.afterChange ?? []), scheduledPublishFailed],
+      },
+    }),
     shouldAutoRun: () => process.env.PAYLOAD_JOBS_AUTORUN !== 'false',
   },
   secret: process.env.PAYLOAD_SECRET ?? '',
