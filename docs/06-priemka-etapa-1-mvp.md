@@ -1,4 +1,4 @@
-# Приёмка этапа 1 (ТЗ 16: пункты 1–20, 31–36)
+# 6. Приёмка этапа 1 (ТЗ 16: пункты 1–20, 31–36)
 
 Прогон 28.10.2026 локально: Docker Compose (продакшен-сборка web и worker), Postgres 16, Redis 7; мини-приложение — в браузере с подписанным initData тестового пользователя (ширина 375 px, светлая и тёмная тема); админка — тестовая учётка с 2FA. Автотесты: `corepack pnpm test` (shared — 23, web — 4, worker — 12) на настоящем Postgres.
 
@@ -73,7 +73,7 @@
 ## Что осталось Льву и заказчице
 
 - 📱 Пройти чек-лист на iPhone и Android в Telegram (светлая и тёмная тема, крупный шрифт), фоновое аудио, Р24 — виджет Яндекс Музыки.
-- Развернуть на Beget (сессия деплоя), задать в `.env` сервера `INTERNAL_SECRET`, `CHANNEL_ID`, `ALERT_CHAT_ID`, `BACKUP_S3_BUCKET`, поставить cron бэкапа и logrotate ([ekspluatatsiya.md](ekspluatatsiya.md)).
+- Развернуть на Beget (сессия деплоя), задать в `.env` сервера `INTERNAL_SECRET`, `CHANNEL_ID`, `ALERT_CHAT_ID`, `BACKUP_S3_BUCKET`, поставить cron бэкапа и logrotate ([15-ekspluatatsiya-bekapy-i-monitoring.md](15-ekspluatatsiya-bekapy-i-monitoring.md)).
 - Сделать бота администратором канала с правом редактировать сообщения; загрузить выгрузку канала.
 - Решения: Р21 (оплата), Р22 (что закрыто и цена), Р4 (OCR и ИИ), Р8, Р11 (сейчас выключено в локальной базе для тестов).
-- Отдать автору [teksty-dlya-avtora.md](teksty-dlya-avtora.md) и [pamyatka-avtoru.md](pamyatka-avtoru.md).
+- Отдать автору [04-teksty-etapa-1-na-utverzhdenie.md](04-teksty-etapa-1-na-utverzhdenie.md) и [17-pamyatka-avtoru.md](17-pamyatka-avtoru.md).

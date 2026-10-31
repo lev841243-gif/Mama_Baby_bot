@@ -1,4 +1,4 @@
-# Деплой на Beget VPS
+# 14. Деплой на Beget VPS
 
 Сервер — облачный VPS Beget в РФ (решение Льва 28.10.2026, закрывает ТЗ 3.7 и приёмку 6). Обычный shared-хостинг Beget не подходит: нет Docker и постоянных процессов.
 
@@ -115,5 +115,5 @@ docker compose exec postgres psql -U mama mama
 ## Следующие шаги
 
 - **Файлы:** бакет S3 Beget, ключи в `.env` (`S3_*`). Пока `S3_BUCKET` пуст, медиа лежат в томе `media` на сервере.
-- **Эксплуатация** ([ekspluatatsiya.md](ekspluatatsiya.md)): ежедневный бэкап в S3 Beget (`BACKUP_S3_BUCKET`), GlitchTip и Uptime Kuma (`--profile monitoring`), алерты в Telegram (`ALERT_CHAT_ID`), деплой из GitHub Actions.
+- **Эксплуатация** ([15-ekspluatatsiya-bekapy-i-monitoring.md](15-ekspluatatsiya-bekapy-i-monitoring.md)): ежедневный бэкап в S3 Beget (`BACKUP_S3_BUCKET`), GlitchTip и Uptime Kuma (`--profile monitoring`), алерты в Telegram (`ALERT_CHAT_ID`), деплой из GitHub Actions.
 - Перед бета-тестом с мамами: закрытый режим и «Идёт тестирование» — в «Настройках проекта» админки, «Удалить данные тестировщиков».

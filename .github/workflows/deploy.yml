@@ -1,6 +1,6 @@
 # Деплой на сервер — только вручную (Actions → Deploy → Run workflow), после зелёного CI.
 # На сервере запускается infra/deploy/update.sh: дамп базы, git pull, сборка; миграции идут сервисом migrate
-# строго по порядку (сначала Payload, потом drizzle-kit). Откат — infra/deploy/rollback.sh (docs/deploy.md).
+# строго по порядку (сначала Payload, потом drizzle-kit). Откат — infra/deploy/rollback.sh (docs/14-razvertyvanie-na-servere.md).
 # Секреты репозитория: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (приватный ключ), DEPLOY_PATH (по умолчанию /opt/mama).
 name: Deploy
 

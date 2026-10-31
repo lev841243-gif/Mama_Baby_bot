@@ -4,10 +4,12 @@ Telegram-бот + мини-приложение для мам детей 3–18 
 
 ## Документы (источник правды)
 
+Документы в `docs` имеют сквозные номера `01-`, `02-` и далее по порядку чтения. Последний текущий документ — `22-proverka-proekta-servera-i-github.md`; следующий самостоятельный документ получает номер 23. Промежуточные проверки одной задачи добавлять в её документ, не создавать отдельный файл на каждую попытку. Название должно объяснять содержание. При переименовании обновлять ссылки. Код, коммит и пуш — только по команде Льва.
+
 - [tz-v4-dnevnik-spokoynogo-materinstva.md](tz-v4-dnevnik-spokoynogo-materinstva.md) — ТЗ 2.0 + приложение с юридическими шаблонами. **Не менять без просьбы Льва.**
 - [tz-v4-otkrytye-voprosy.md](tz-v4-otkrytye-voprosy.md) — открытые решения (Р…) и вопросы (В…).
 - [yuridicheskie-shablony/](yuridicheskie-shablony/) — те же юр. тексты отдельными файлами; 07 — тексты экранов (бета-дисклеймер, окно согласий, отзыв, экстренный текст).
-- [docs/plan-etap-1.md](docs/plan-etap-1.md) — план этапа 1 и статус шагов.
+- [docs/03-plan-etapa-1-mvp.md](docs/03-plan-etapa-1-mvp.md) — план этапа 1 и статус шагов.
 - tz-v1…v3 — старые версии, только для истории.
 
 Ссылаясь на требование, указывай раздел ТЗ (например «ТЗ 8.9»).
@@ -75,7 +77,7 @@ docker-compose.yml
 
 ## Хостинг
 
-VPS на **Beget в РФ** (решение Льва 28.10.2026) — закрывает ТЗ 3.7 и приёмку 6 (данные в РФ). Инструкция — [docs/deploy.md](docs/deploy.md). Проект остаётся **переносимым**: Docker Compose, всё через env, S3-совместимое хранилище в РФ (например S3 Beget), свой домен, Caddy. Перенос — `pg_dump` + `rclone`.
+VPS на **Beget в РФ** (решение Льва 28.10.2026) — закрывает ТЗ 3.7 и приёмку 6 (данные в РФ). Инструкция — [docs/14-razvertyvanie-na-servere.md](docs/14-razvertyvanie-na-servere.md). Проект остаётся **переносимым**: Docker Compose, всё через env, S3-совместимое хранилище в РФ (например S3 Beget), свой домен, Caddy. Перенос — `pg_dump` + `rclone`.
 
 ## Открытые решения → заглушки
 
@@ -111,8 +113,8 @@ corepack pnpm -F @mama/web generate:importmap             # после новы�
 corepack pnpm db:generate                                 # после правки packages/shared/src/db/schema.ts
 ```
 
-- Сервер (Beget VPS, `/opt/mama`): обновление — `bash infra/deploy/update.sh`, откат — `bash infra/deploy/rollback.sh`, подробно — [docs/deploy.md](docs/deploy.md).
-- Мониторинг, алерты, бэкап (`infra/backup/backup.sh`, `restore-check.sh`), CI и ручной деплой из GitHub Actions — [docs/ekspluatatsiya.md](docs/ekspluatatsiya.md). Проверка здоровья — `/api/health`.
+- Сервер (Beget VPS, `/opt/mama`): обновление — `bash infra/deploy/update.sh`, откат — `bash infra/deploy/rollback.sh`, подробно — [docs/14-razvertyvanie-na-servere.md](docs/14-razvertyvanie-na-servere.md).
+- Мониторинг, алерты, бэкап (`infra/backup/backup.sh`, `restore-check.sh`), CI и ручной деплой из GitHub Actions — [docs/15-ekspluatatsiya-bekapy-i-monitoring.md](docs/15-ekspluatatsiya-bekapy-i-monitoring.md). Проверка здоровья — `/api/health`.
 - Сервис `migrate` в compose прогоняет `payload migrate`, затем drizzle-миграции и добавляет `ACCESS_LIST_TG_IDS` в `app.access_list`.
 - `next build` на Windows падает на шаге standalone (нет прав на симлинки) — это нормально, собирать в Docker.
 - Мини-приложение: `/app`, API: `/api/tma/*` (заголовок `Authorization: tma <initData>`), юр. страницы: `/terms`, `/privacy`, `/consent`, `/rassylka`, `/oferta`, админка: `/admin`.

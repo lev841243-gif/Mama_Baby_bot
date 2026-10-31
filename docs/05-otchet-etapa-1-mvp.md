@@ -1,6 +1,6 @@
-# Отчёт об этапе 1 (MVP)
+# 5. Отчёт об этапе 1 (MVP)
 
-28.10.2026. Подробности по шагам — [plan-etap-1.md](plan-etap-1.md), приёмка по пунктам — [priemka-etap-1.md](priemka-etap-1.md).
+28.10.2026. Подробности по шагам — [03-plan-etapa-1-mvp.md](03-plan-etapa-1-mvp.md), приёмка по пунктам — [06-priemka-etapa-1-mvp.md](06-priemka-etapa-1-mvp.md).
 
 ## Итог
 
@@ -30,14 +30,14 @@
 - Адрес временный: https://159-194-245-43.sslip.io (сертификат Let's Encrypt). `/app`, `/admin`, `/api/health` отвечают.
 - Наружу открыты только 22, 80, 443. Секреты сгенерированы на сервере.
 - Локальный бот и туннель cloudflared остановлены — бот работает только на сервере.
-- Инструкция: [deploy.md](deploy.md). Обновление — `git push`, затем на сервере `bash infra/deploy/update.sh`; откат — `rollback.sh`.
+- Инструкция: [14-razvertyvanie-na-servere.md](14-razvertyvanie-na-servere.md). Обновление — `git push`, затем на сервере `bash infra/deploy/update.sh`; откат — `rollback.sh`.
 
 Почему раньше был туннель cloudflared, а не sslip.io: у домашнего компьютера нет публичного IP с открытыми 80/443, поэтому ни Let's Encrypt, ни Telegram до него не достучатся. sslip.io работает только с публичным IP — его дал VPS.
 
 ## Что осталось
 
 **Сервер (Лев):**
-- Бэкапа пока нет. Создать бакет в S3 Beget, вписать `S3_*` и `BACKUP_S3_BUCKET`, поставить cron бэкапа и logrotate — [ekspluatatsiya.md](ekspluatatsiya.md).
+- Бэкапа пока нет. Создать бакет в S3 Beget, вписать `S3_*` и `BACKUP_S3_BUCKET`, поставить cron бэкапа и logrotate — [15-ekspluatatsiya-bekapy-i-monitoring.md](15-ekspluatatsiya-bekapy-i-monitoring.md).
 - Алерты: `ALERT_CHAT_ID`. Мониторинг: `docker compose --profile monitoring up -d`, настроить GlitchTip и Uptime Kuma.
 - Секреты GitHub Actions для ручного деплоя.
 - Свой домен вместо sslip.io: A-запись → IP, в `.env` поменять `DOMAIN` и `PUBLIC_URL`, `docker compose up -d`.
@@ -49,7 +49,7 @@
 
 **Заказчица:**
 - Сделать бота админом канала (право редактировать сообщения), прислать `CHANNEL_ID` и выгрузку канала.
-- Утвердить тексты ([teksty-dlya-avtora.md](teksty-dlya-avtora.md)) и стартовый список «красных слов», пройти памятку ([pamyatka-avtoru.md](pamyatka-avtoru.md)).
+- Утвердить тексты ([04-teksty-etapa-1-na-utverzhdenie.md](04-teksty-etapa-1-na-utverzhdenie.md)) и стартовый список «красных слов», пройти памятку ([17-pamyatka-avtoru.md](17-pamyatka-avtoru.md)).
 - Решения: Р21 (способ оплаты), Р22 (что закрыто и цена), Р4 (ИИ и OCR), Р8 (повторное согласие — юрист), Р11, Р13 (дизайн).
 
 **Перед бета-тестом с мамами:**

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Откат к версии до последнего update.sh: прежний коммит и прежние образы, без пересборки.
-# Схему базы не откатывает — при необходимости восстановить дамп из backups/ (см. docs/deploy.md).
+# Схему базы не откатывает — при необходимости восстановить дамп из backups/ (см. docs/14-razvertyvanie-na-servere.md).
 # Запуск из корня репозитория: bash infra/deploy/rollback.sh
 set -euo pipefail
 

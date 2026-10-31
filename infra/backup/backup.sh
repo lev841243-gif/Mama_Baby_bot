@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ежедневный бэкап (ТЗ 13, 11.5): база + медиа в S3-совместимое хранилище в РФ, хранение 30 дней.
-# Запуск из корня репозитория: bash infra/backup/backup.sh  (по cron — см. docs/ekspluatatsiya.md)
+# Запуск из корня репозитория: bash infra/backup/backup.sh  (по cron — см. docs/15-ekspluatatsiya-bekapy-i-monitoring.md)
 # Нужны в .env: BACKUP_S3_BUCKET, S3_ENDPOINT, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY (S3_REGION — по желанию).
 # При ошибке — алерт в Telegram (ALERT_CHAT_ID).
 set -euo pipefail
