@@ -1,5 +1,5 @@
 'use client'
-import type { AgeSectionId } from '@mama/shared/age'
+import { AGE_SECTIONS, type AgeSectionId } from '@mama/shared/age'
 import { createContext, useContext } from 'react'
 import type { SessionPayload } from '@/lib/session-types'
 
@@ -48,6 +48,6 @@ export function initialStack(start: string | null): Screen[] {
   const m = Number(q.get('m') ?? (start?.startsWith('m') ? start.slice(1) : NaN))
   if (Number.isSafeInteger(m) && m > 0) return [home, { name: 'material', id: m }]
   const s = start?.startsWith('s') ? start.slice(1) : null
-  if (s && ['3-6', '6-9', '9-12', '12-18'].includes(s)) return [home, { name: 'section', id: s as AgeSectionId }]
+  if (s && AGE_SECTIONS.some((section) => section.id === s)) return [home, { name: 'section', id: s as AgeSectionId }]
   return [home]
 }

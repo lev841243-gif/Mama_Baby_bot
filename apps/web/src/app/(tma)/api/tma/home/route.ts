@@ -1,4 +1,4 @@
-import { ageInMonths, ageSection, getChildBirth, getFeedState, getLastOpened, getSettings, listDone } from '@mama/shared'
+import { AGE_SECTIONS, ageInMonths, ageSection, getChildBirth, getFeedState, getLastOpened, getSettings, listDone } from '@mama/shared'
 import { NextResponse } from 'next/server'
 import { cardsOut, listCards, sectionInfo } from '@/lib/content'
 import { getDb, tmaRoute } from '@/lib/server'
@@ -26,7 +26,7 @@ export const POST = tmaRoute(async ({ tgId }) => {
   const body: HomePayload = {
     sections: sectionInfo(cards.filter((c) => c.type === 'exercise' || c.type === 'article'), settings),
     yourSection: months === null ? null : ageSection(months),
-    tooYoung: months !== null && months < 3,
+    tooYoung: months !== null && months < AGE_SECTIONS[0].from,
     birth,
     continue: last ? cardsOut([last], done)[0]! : null,
     fresh: cardsOut(fresh, done),

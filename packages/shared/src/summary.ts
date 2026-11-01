@@ -49,7 +49,7 @@ export async function buildSummary(db: Db, days = 30): Promise<Summary> {
   for (const r of feedRows) {
     const id = r.y && r.m ? ageSection(ageInMonths(r.y, r.m)) : null
     const sec = AGE_SECTIONS.find((x) => x.id === id)
-    const s = !r.y || !r.m ? 'возраст не указан' : sec ? `${sec.from}–${sec.to} мес.` : 'вне 3–18 мес.'
+    const s = !r.y || !r.m ? 'возраст не указан' : sec ? `${sec.from}–${sec.to} мес.` : 'вне 0–18 мес.'
     bySection.set(s, (bySection.get(s) ?? 0) + 1)
   }
 

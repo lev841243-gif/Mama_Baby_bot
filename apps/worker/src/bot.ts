@@ -1,5 +1,6 @@
 // Бот: вход, гейт согласия, главное меню, настройки, возраст ребёнка, отзыв согласия (ТЗ 6).
 import {
+  AGE_SECTIONS,
   MONTHS_RU,
   T,
   ageInMonths,
@@ -277,7 +278,7 @@ export function setupBot(bot: Bot, { db, log, publicUrl, channelUrl, redis, chan
       return show(ctx, T.calBirthChanged, new InlineKeyboard().text(T.calRestart, 'cal:restart').text(T.calKeep, 'settings'))
     }
     let text = fmt(T.ageSaved, { month: MONTHS_RU[month - 1]!, year: String(year) })
-    if (ageInMonths(year, month) < 3) text += `\n\n${T.ageTooYoung}`
+    if (ageInMonths(year, month) < AGE_SECTIONS[0].from) text += `\n\n${T.ageTooYoung}`
     await show(ctx, text, new InlineKeyboard().text(T.backButton, 'settings'))
   })
 

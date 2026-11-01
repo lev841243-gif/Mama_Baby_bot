@@ -26,7 +26,9 @@ test('существенная версия требует повторного 
 })
 
 test('возрастные разделы: нижняя граница включается, верхняя нет (ТЗ 5)', () => {
-  assert.equal(ageSection(2), null)
+  assert.equal(ageSection(-1), null)
+  assert.equal(ageSection(0), '0-3')
+  assert.equal(ageSection(2), '0-3')
   assert.equal(ageSection(3), '3-6')
   assert.equal(ageSection(6), '6-9')
   assert.equal(ageSection(17), '12-18')
@@ -76,7 +78,21 @@ test('материал «4–9» попадает в разделы «3–6» и
   assert.deepEqual(sectionsForRange(4, 9), ['3-6', '6-9'])
   assert.deepEqual(sectionsForRange(6, 9), ['6-9'])
   assert.deepEqual(sectionsForRange(3, 18), ['3-6', '6-9', '9-12', '12-18'])
-  assert.deepEqual(sectionsForRange(0, 3), [])
+  assert.deepEqual(sectionsForRange(0, 3), ['0-3'])
+  assert.deepEqual(sectionsForRange(2, 4), ['0-3', '3-6'])
+  assert.deepEqual(sectionsForRange(0, 18), ['0-3', '3-6', '6-9', '9-12', '12-18'])
+})
+
+test('пустой раздел 0–3 виден при выключенном скрытии; порог наполнения сохраняется', async () => {
+  const { isSectionVisible } = await import('./content')
+  const settings = { hideSmallSections: false, smallSectionMin: 5 }
+  assert.equal(isSectionVisible('0-3', 0, settings), true)
+  assert.equal(isSectionVisible('12-18', 0, settings), false)
+  assert.equal(isSectionVisible('3-6', 1, settings), true)
+  const hidden = { ...settings, hideSmallSections: true }
+  assert.equal(isSectionVisible('0-3', 0, hidden), false)
+  assert.equal(isSectionVisible('0-3', 4, hidden), false)
+  assert.equal(isSectionVisible('0-3', 5, hidden), true)
 })
 
 test('подбор: «нужно уметь» отмечено, «ведёт к» ещё нет (ТЗ 8.3)', async () => {

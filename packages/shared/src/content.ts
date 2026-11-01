@@ -24,6 +24,16 @@ export function sectionsForRange(from: number, to: number): AgeSectionId[] {
   return AGE_SECTIONS.filter((s) => from < s.to && to > s.from).map((s) => s.id)
 }
 
+/** Новый раздел 0–3 доступен и до наполнения, если скрытие маленьких разделов выключено. */
+export function isSectionVisible(
+  section: AgeSectionId,
+  count: number,
+  settings: { hideSmallSections: boolean; smallSectionMin: number },
+): boolean {
+  if (settings.hideSmallSections) return count > 0 && count >= settings.smallSectionMin
+  return count > 0 || section === '0-3'
+}
+
 export type MatchItem = { id: number; leads: number[]; requires: number[] }
 
 /**

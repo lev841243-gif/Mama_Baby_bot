@@ -1,6 +1,6 @@
 import 'server-only'
 import config from '@payload-config'
-import { AGE_SECTIONS, type AgeSectionId, type AppSettings, getActiveSubscriptionUntil, sectionsForRange } from '@mama/shared'
+import { AGE_SECTIONS, type AgeSectionId, type AppSettings, getActiveSubscriptionUntil, isSectionVisible, sectionsForRange } from '@mama/shared'
 import { getDb } from '@mama/shared/db'
 import { getPayload, type Where } from 'payload'
 import { type MaterialCard, toCard } from './material-view'
@@ -76,7 +76,7 @@ export function sectionInfo(cards: CardDoc[], settings: AppSettings): SectionInf
     const count = cards.filter(
       (c) => typeof c.ageFrom === 'number' && typeof c.ageTo === 'number' && sectionsForRange(c.ageFrom, c.ageTo).includes(s.id),
     ).length
-    return { id: s.id, from: s.from, to: s.to, count, visible: count > 0 && (!settings.hideSmallSections || count >= settings.smallSectionMin) }
+    return { id: s.id, from: s.from, to: s.to, count, visible: isSectionVisible(s.id, count, settings) }
   })
 }
 
