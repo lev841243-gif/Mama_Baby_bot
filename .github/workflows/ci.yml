@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        # Миграции поиска используют расширение vector, как и рабочий сервер.
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: mama
           POSTGRES_PASSWORD: ci
